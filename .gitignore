@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.log
+*.sqlite
+*.sqlite-journal
+audit.json
+audit-dev.json
+.DS_Store

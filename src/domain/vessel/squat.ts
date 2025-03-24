@@ -145,7 +145,15 @@ export function computeSquat(
         used = 'barrass';
         break;
       }
-      const millward = millwardSquat(input);
+      // millward runs out of range in very shallow water at speed, and where
+      // it does the district falls back to barrass rather than refusing to
+      // plan at all
+      let millward: number;
+      try {
+        millward = millwardSquat(input);
+      } catch {
+        millward = 0;
+      }
       raw = Math.max(barrass, millward);
       used = millward > barrass ? 'millward' : 'barrass';
       break;

@@ -77,17 +77,20 @@ export function assessReach(input: {
   const available = depth + tideHeight;
   const log = new FindingLog();
 
-  const squat = computeSquat(
-    {
-      vessel,
-      draught,
-      speed: conditions.speed,
-      depth: Math.max(1, available),
-      width: reach.width,
-      channel: reach.channel,
-    },
-    conditions.squatMethod ?? 'worse-of-both',
-  );
+  const dry = available <= 0;
+  const squat = dry
+    ? { squat: 0, method: 'barrass' as const, blockage: 0, rawSquat: 0 }
+    : computeSquat(
+        {
+          vessel,
+          draught,
+          speed: conditions.speed,
+          depth: available,
+          width: reach.width,
+          channel: reach.channel,
+        },
+        conditions.squatMethod ?? 'worse-of-both',
+      );
   const allowances: Allowances = {
     squat: squat.squat,
     heel: heelAllowance(policy, vessel),
@@ -103,6 +106,12 @@ export function assessReach(input: {
   const margin = available - needed;
   const netClearance = available - dynamicDraught;
 
+  if (dry) {
+    log.block('UKC-DRY-08', 'the reach has no water in it at this state of tide', {
+      subject: reach.id,
+      detail: { available },
+    });
+  }
   if (margin < 0) {
     log.block('UKC-NET-01', 'not enough water for the required clearance', {
       subject: reach.id,

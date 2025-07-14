@@ -38,7 +38,7 @@ describe('numbering', () => {
   });
 
   it('refuses what is not a number', () => {
-    expect(() => makeCreditNumber(2025, 0)).toThrow(/outside the credit note sequence/);
+    expect(() => makeCreditNumber(2025, 0)).toThrow(/outside the sequence/);
     expect(() => makeCreditNumber(1999, 1)).toThrow(/not a year/);
   });
 });
@@ -168,7 +168,7 @@ describe('raising a credit', () => {
       raisedAt: RAISED,
       note: 'x',
     };
-    expect(() => raiseCredit({ ...base, number: 'CRN-1' })).toThrow(/not a credit note number/);
+    expect(() => raiseCredit({ ...base, number: 'CRN-1' })).toThrow(/not a CRN reference/);
     expect(() => raiseCredit({ ...base, number: 'CRN-2025-00001', amount: 0 })).toThrow(
       /positive amount/,
     );

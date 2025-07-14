@@ -14,6 +14,7 @@ import type { Minute } from '../../util/clock';
 import { localDate } from '../../util/clock';
 import type { Cm } from '../../util/units';
 import { assertCm } from '../../util/units';
+import { format, isReference, makeSeries, next, sequenceOf, yearOf } from '../../util/sequence';
 
 export type MovementKind = 'arrival' | 'departure' | 'shift' | 'anchorage' | 'swing';
 
@@ -49,40 +50,25 @@ export interface Movement {
   readonly notes: readonly string[];
 }
 
-const REFERENCE = /^M-\d{4}-\d{4}$/;
 const AGENT = /^[A-Z][A-Z0-9-]{1,11}$/;
 
-/** Build the reference for the nth movement of a year. */
+/** The district's movement series: M-2025-0004. */
+export const MOVEMENT_SERIES = makeSeries('M', 4);
+
 export function makeReference(year: number, sequence: number): string {
-  if (!Number.isInteger(year) || year < 2000 || year > 2999) {
-    throw new InputError(`${year} is not a year this system issues references for`);
-  }
-  if (!Number.isInteger(sequence) || sequence < 1 || sequence > 9999) {
-    throw new InputError(`${sequence} is outside the sequence a year can hold`);
-  }
-  return `M-${year}-${String(sequence).padStart(4, '0')}`;
+  return format(MOVEMENT_SERIES, year, sequence);
 }
 
 export function referenceYear(reference: string): number {
-  if (!REFERENCE.test(reference)) {
-    throw new InputError(`not a movement reference: ${JSON.stringify(reference)}`);
-  }
-  return Number(reference.slice(2, 6));
+  return yearOf(MOVEMENT_SERIES, reference);
 }
 
 export function referenceSequence(reference: string): number {
-  if (!REFERENCE.test(reference)) {
-    throw new InputError(`not a movement reference: ${JSON.stringify(reference)}`);
-  }
-  return Number(reference.slice(7));
+  return sequenceOf(MOVEMENT_SERIES, reference);
 }
 
-/** The next reference after the ones already issued in a year. */
 export function nextReference(year: number, issued: readonly string[]): string {
-  const highest = issued
-    .filter((reference) => REFERENCE.test(reference) && referenceYear(reference) === year)
-    .reduce((worst, reference) => Math.max(worst, referenceSequence(reference)), 0);
-  return makeReference(year, highest + 1);
+  return next(MOVEMENT_SERIES, year, issued);
 }
 
 export function makeMovement(input: {
@@ -101,8 +87,8 @@ export function makeMovement(input: {
   tugs?: number;
   notes?: readonly string[];
 }): Movement {
-  if (!REFERENCE.test(input.reference)) {
-    throw new InputError(`not a movement reference: ${JSON.stringify(input.reference)}`);
+  if (!isReference(MOVEMENT_SERIES, input.reference)) {
+    throw new InputError(`not a M reference: ${JSON.stringify(input.reference)}`);
   }
   if (!AGENT.test(input.agent)) {
     throw new InputError(`agent code must be upper case, got ${JSON.stringify(input.agent)}`);

@@ -13,6 +13,7 @@ import { InputError } from '../../util/errors';
 import type { Minute } from '../../util/clock';
 import type { Cents } from '../../util/units';
 import { assertCents } from '../../util/units';
+import { format, isReference, makeSeries, next } from '../../util/sequence';
 import type { Invoice } from './invoice';
 import { grossTotal, isOutstanding, totalForCode } from './invoice';
 
@@ -33,7 +34,7 @@ export interface CreditNote {
   readonly note: string;
 }
 
-const NUMBER = /^CRN-\d{4}-\d{5}$/;
+export const CREDIT_SERIES = makeSeries('CRN', 5);
 
 /** How much of an invoice each reason may take, in basis points. */
 const CEILING: Record<CreditReason, number> = {
@@ -45,20 +46,11 @@ const CEILING: Record<CreditReason, number> = {
 };
 
 export function makeCreditNumber(year: number, sequence: number): string {
-  if (!Number.isInteger(year) || year < 2000 || year > 2999) {
-    throw new InputError(`${year} is not a year credit notes are raised in`);
-  }
-  if (!Number.isInteger(sequence) || sequence < 1 || sequence > 99999) {
-    throw new InputError(`${sequence} is outside the credit note sequence for a year`);
-  }
-  return `CRN-${year}-${String(sequence).padStart(5, '0')}`;
+  return format(CREDIT_SERIES, year, sequence);
 }
 
 export function nextCreditNumber(year: number, issued: readonly string[]): string {
-  const highest = issued
-    .filter((number) => NUMBER.test(number) && number.startsWith(`CRN-${year}-`))
-    .reduce((worst, number) => Math.max(worst, Number(number.slice(9))), 0);
-  return makeCreditNumber(year, highest + 1);
+  return next(CREDIT_SERIES, year, issued);
 }
 
 export function ceilingFor(reason: CreditReason): number {
@@ -75,8 +67,8 @@ export function raiseCredit(input: {
   /** Credits already raised against the same invoice. */
   existing?: readonly CreditNote[];
 }): CreditNote {
-  if (!NUMBER.test(input.number)) {
-    throw new InputError(`not a credit note number: ${JSON.stringify(input.number)}`);
+  if (!isReference(CREDIT_SERIES, input.number)) {
+    throw new InputError(`not a CRN reference: ${JSON.stringify(input.number)}`);
   }
   const amount = assertCents(input.amount, 'credit amount');
   if (amount <= 0) {

@@ -13,6 +13,7 @@ import type { Minute } from '../../util/clock';
 import { localDate } from '../../util/clock';
 import type { Cents } from '../../util/units';
 import { applyBps, assertCents } from '../../util/units';
+import { format, isReference, makeSeries, next } from '../../util/sequence';
 import type { ChargeLine } from '../tariff/charge';
 import { totalOf } from '../tariff/charge';
 
@@ -35,23 +36,14 @@ export interface Invoice {
   readonly taxRate: number;
 }
 
-const NUMBER = /^INV-\d{4}-\d{5}$/;
+export const INVOICE_SERIES = makeSeries('INV', 5);
 
 export function makeInvoiceNumber(year: number, sequence: number): string {
-  if (!Number.isInteger(year) || year < 2000 || year > 2999) {
-    throw new InputError(`${year} is not a year invoices are raised in`);
-  }
-  if (!Number.isInteger(sequence) || sequence < 1 || sequence > 99999) {
-    throw new InputError(`${sequence} is outside the invoice sequence for a year`);
-  }
-  return `INV-${year}-${String(sequence).padStart(5, '0')}`;
+  return format(INVOICE_SERIES, year, sequence);
 }
 
 export function nextInvoiceNumber(year: number, issued: readonly string[]): string {
-  const highest = issued
-    .filter((number) => NUMBER.test(number) && number.startsWith(`INV-${year}-`))
-    .reduce((worst, number) => Math.max(worst, Number(number.slice(9))), 0);
-  return makeInvoiceNumber(year, highest + 1);
+  return next(INVOICE_SERIES, year, issued);
 }
 
 export function makeInvoice(input: {
@@ -64,8 +56,8 @@ export function makeInvoice(input: {
   taxRate?: number;
   status?: InvoiceStatus;
 }): Invoice {
-  if (!NUMBER.test(input.number)) {
-    throw new InputError(`not an invoice number: ${JSON.stringify(input.number)}`);
+  if (!isReference(INVOICE_SERIES, input.number)) {
+    throw new InputError(`not an INV reference: ${JSON.stringify(input.number)}`);
   }
   if (input.items.length === 0) {
     throw new InputError(`invoice ${input.number} has nothing on it`);

@@ -57,7 +57,7 @@ describe('numbering', () => {
 
   it('refuses what is not a number', () => {
     expect(() => makeInvoiceNumber(1999, 1)).toThrow(/not a year/);
-    expect(() => makeInvoiceNumber(2025, 0)).toThrow(/outside the invoice sequence/);
+    expect(() => makeInvoiceNumber(2025, 0)).toThrow(/outside the sequence/);
   });
 });
 
@@ -70,7 +70,7 @@ describe('building an invoice', () => {
   });
 
   it('refuses an invoice that is not one', () => {
-    expect(() => invoice({ number: '42' })).toThrow(/not an invoice number/);
+    expect(() => invoice({ number: '42' })).toThrow(/not an INV reference/);
     expect(() => invoice({ items: [] })).toThrow(/nothing on it/);
     expect(() => invoice({ dueAt: RAISED - 60 })).toThrow(/falls due before/);
     expect(() => invoice({ taxRate: 9000 })).toThrow(/tax rate that is not one/);

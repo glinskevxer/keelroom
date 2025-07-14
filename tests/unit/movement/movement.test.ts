@@ -45,7 +45,7 @@ describe('references', () => {
   });
 
   it('refuses a reference that is not one', () => {
-    expect(() => referenceYear('M-25-4')).toThrow(/not a movement reference/);
+    expect(() => referenceYear('M-25-4')).toThrow(/not a M reference/);
     expect(() => referenceSequence('nonsense')).toThrow(InputError);
     expect(() => makeReference(1999, 1)).toThrow(/not a year/);
     expect(() => makeReference(2025, 0)).toThrow(/outside the sequence/);
@@ -72,7 +72,7 @@ describe('building a movement', () => {
   });
 
   it('refuses a movement that is not one', () => {
-    expect(() => movement({ reference: 'M-25-4' })).toThrow(/not a movement reference/);
+    expect(() => movement({ reference: 'M-25-4' })).toThrow(/not a M reference/);
     expect(() => movement({ agent: 'seaway' })).toThrow(/upper case/);
     expect(() => movement({ draught: 0 })).toThrow(/no declared draught/);
     expect(() => movement({ from: 'GRAIN-3', to: 'GRAIN-3' })).toThrow(/same place/);

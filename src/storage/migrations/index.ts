@@ -1,6 +1,8 @@
 import type { Db } from '../database';
 import { up as district } from './001-district';
 import { up as fleet } from './002-fleet';
+import { up as roster } from './003-roster';
+import { up as billing } from './004-billing';
 
 export interface Migration {
   readonly id: number;
@@ -17,4 +19,6 @@ export interface Migration {
 export const MIGRATIONS: readonly Migration[] = [
   { id: 1, name: 'district', up: district },
   { id: 2, name: 'fleet', up: fleet },
+  { id: 3, name: 'roster', up: roster },
+  { id: 4, name: 'billing', up: billing },
 ];

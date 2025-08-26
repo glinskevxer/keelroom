@@ -25,7 +25,7 @@ export const CROWN: Vessel = makeVessel({
   type: 'bulk',
   length: 22500,
   beam: 3220,
-  summerDraught: 1250,
+  summerDraught: 1350,
   airDraught: 4200,
   grossTonnage: 43000,
   deadweight: 76000,
@@ -40,6 +40,19 @@ export const LAUNCH: Vessel = makeVessel({
   summerDraught: 600,
   airDraught: 2600,
   grossTonnage: 4200,
+});
+
+/** A capesize that no tide in this district will take up the harbour. */
+export const MONARCH: Vessel = makeVessel({
+  imo: '9319466',
+  name: 'ore monarch',
+  type: 'bulk',
+  length: 30000,
+  beam: 5000,
+  summerDraught: 1750,
+  airDraught: 5000,
+  grossTonnage: 180000,
+  deadweight: 320000,
 });
 
 export const PILOTS: Pilot[] = [
@@ -78,6 +91,7 @@ export function testContext(overrides: Partial<DistrictConfig> = {}): TestContex
   saveDistrict(temp.db, { district: testDistrict(), position: POSITION });
   saveVessel(temp.db, CROWN);
   saveVessel(temp.db, LAUNCH);
+  saveVessel(temp.db, MONARCH);
   saveAccount(
     temp.db,
     makeAccount({ agent: 'SEAWAY', name: 'Seaway Agencies', creditLimit: 5000000 }),

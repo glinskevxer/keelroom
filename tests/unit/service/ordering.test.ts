@@ -51,7 +51,7 @@ describe('taking an order', () => {
 
   it('refuses a ship nobody has on the books', () => {
     harness = testContext();
-    expect(() => placeOrder(harness!.context, order({ vessel: '9319466' }))).toThrow(NotFoundError);
+    expect(() => placeOrder(harness!.context, order({ vessel: '9123453' }))).toThrow(NotFoundError);
   });
 
   it('refuses an agent nobody has', () => {

@@ -49,7 +49,7 @@ export const MONARCH: Vessel = makeVessel({
   type: 'bulk',
   length: 30000,
   beam: 5000,
-  summerDraught: 1750,
+  summerDraught: 2000,
   airDraught: 5000,
   grossTonnage: 180000,
   deadweight: 320000,

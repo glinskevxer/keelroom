@@ -11,6 +11,7 @@ import { VERSION } from '../version';
 import { EXIT_CLEAN, EXIT_USAGE, describeError, exitCodeOf } from '../util/errors';
 import type { Io } from './output';
 import { registerDoctor } from './commands/doctor';
+import { registerFleet } from './commands/fleet';
 import { registerTides } from './commands/tides';
 
 export interface RunOptions {
@@ -37,6 +38,7 @@ export function buildProgram(io: Io): Command {
     writeErr: (text) => io.fail(text.trimEnd()),
   });
   registerDoctor(program, io);
+  registerFleet(program, io);
   registerTides(program, io);
   return program;
 }

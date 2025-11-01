@@ -13,6 +13,7 @@ import type { Io } from './output';
 import { registerDoctor } from './commands/doctor';
 import { registerFleet } from './commands/fleet';
 import { registerOrders } from './commands/orders';
+import { registerPlan } from './commands/plan';
 import { registerTides } from './commands/tides';
 
 export interface RunOptions {
@@ -41,6 +42,7 @@ export function buildProgram(io: Io): Command {
   registerDoctor(program, io);
   registerFleet(program, io);
   registerOrders(program, io);
+  registerPlan(program, io);
   registerTides(program, io);
   return program;
 }

@@ -10,6 +10,7 @@ import { Command } from 'commander';
 import { VERSION } from '../version';
 import { EXIT_CLEAN, EXIT_USAGE, describeError, exitCodeOf } from '../util/errors';
 import type { Io } from './output';
+import { registerDispatch } from './commands/dispatch';
 import { registerDoctor } from './commands/doctor';
 import { registerFleet } from './commands/fleet';
 import { registerOrders } from './commands/orders';
@@ -39,6 +40,7 @@ export function buildProgram(io: Io): Command {
     writeOut: (text) => io.write(text.trimEnd()),
     writeErr: (text) => io.fail(text.trimEnd()),
   });
+  registerDispatch(program, io);
   registerDoctor(program, io);
   registerFleet(program, io);
   registerOrders(program, io);

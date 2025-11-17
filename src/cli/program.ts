@@ -12,6 +12,7 @@ import { EXIT_CLEAN, EXIT_USAGE, describeError, exitCodeOf } from '../util/error
 import type { Io } from './output';
 import { registerBilling } from './commands/billing';
 import { registerDispatch } from './commands/dispatch';
+import { registerDistrict } from './commands/district';
 import { registerDoctor } from './commands/doctor';
 import { registerFleet } from './commands/fleet';
 import { registerOrders } from './commands/orders';
@@ -44,6 +45,7 @@ export function buildProgram(io: Io): Command {
   });
   registerBilling(program, io);
   registerDispatch(program, io);
+  registerDistrict(program, io);
   registerDoctor(program, io);
   registerFleet(program, io);
   registerOrders(program, io);

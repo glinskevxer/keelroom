@@ -18,6 +18,7 @@ import { registerFleet } from './commands/fleet';
 import { registerOrders } from './commands/orders';
 import { registerPlan } from './commands/plan';
 import { registerRoster } from './commands/roster';
+import { registerServe } from './commands/serve';
 import { registerTides } from './commands/tides';
 
 export interface RunOptions {
@@ -51,6 +52,7 @@ export function buildProgram(io: Io): Command {
   registerOrders(program, io);
   registerPlan(program, io);
   registerRoster(program, io);
+  registerServe(program, io);
   registerTides(program, io);
   return program;
 }

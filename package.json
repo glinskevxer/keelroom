@@ -21,7 +21,11 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"scripts/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"scripts/**/*.ts\"",
     "verify-tree": "tsx scripts/verify-tree.ts",
-    "check": "bash scripts/check.sh"
+    "check": "bash scripts/check.sh",
+    "version:write": "tsx scripts/build-version.ts",
+    "version:check": "tsx scripts/build-version.ts --check",
+    "commands": "tsx scripts/build-command-reference.ts",
+    "commands:check": "tsx scripts/build-command-reference.ts --check"
   },
   "dependencies": {
     "better-sqlite3": "11.8.1",

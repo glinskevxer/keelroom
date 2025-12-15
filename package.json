@@ -25,7 +25,9 @@
     "version:write": "tsx scripts/build-version.ts",
     "version:check": "tsx scripts/build-version.ts --check",
     "commands": "tsx scripts/build-command-reference.ts",
-    "commands:check": "tsx scripts/build-command-reference.ts --check"
+    "commands:check": "tsx scripts/build-command-reference.ts --check",
+    "release-check": "tsx scripts/release-check.ts",
+    "export-check": "bash scripts/export-check.sh"
   },
   "dependencies": {
     "better-sqlite3": "11.8.1",

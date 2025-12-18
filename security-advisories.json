@@ -1,0 +1,4 @@
+{
+  "policy": "Every advisory npm reports against a runtime dependency is read against how this system is deployed, and either fixed or accepted here with a date the acceptance runs out. An advisory that is not in this file fails the build.",
+  "accepted": []
+}

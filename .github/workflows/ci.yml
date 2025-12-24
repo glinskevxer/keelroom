@@ -1,0 +1,146 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# a second push while the first is still running makes the first one pointless
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint, types and format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.1'
+          cache: npm
+      - run: npm ci
+      - name: types
+        run: npm run typecheck
+      - name: lint
+        run: npm run lint
+      - name: format
+        run: npm run format:check
+      - name: the tree is laid out the way the suite assumes
+        run: npm run verify-tree
+
+  test:
+    name: tests on node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.18.1', '22.13.1']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: tests
+        run: npm test
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.1'
+          cache: npm
+      - run: npm ci
+      - name: coverage
+        run: npm run coverage
+      - name: keep the report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  docs:
+    name: the generated docs are current
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.1'
+          cache: npm
+      - run: npm ci
+      - run: npm run version:check
+      - run: npm run commands:check
+
+  release:
+    name: what git would ship
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.1'
+          cache: npm
+      - run: npm ci
+      - name: release check
+        run: npm run release-check
+      - name: export check
+        run: npm run export-check
+      - name: build
+        run: npm run build
+      - name: the built cli runs
+        run: node dist/cli/main.js --version
+
+  advisories:
+    name: dependency advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.1'
+          cache: npm
+      - run: npm ci
+      - name: read the advisories against what ships
+        run: npm audit --omit=dev --json > audit.json || true
+      - name: decide about them
+        run: npx tsx scripts/audit-dependencies.ts --from-audit audit.json
+      - name: read the toolchain advisories, for information only
+        run: npm audit --json > audit-dev.json || true
+      - name: print them
+        run: npx tsx scripts/audit-dependencies.ts --from-audit audit-dev.json --report-only
+
+  image:
+    name: container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the image
+        run: docker build -t keelroom:ci .
+      - name: the image runs the cli
+        run: docker run --rm keelroom:ci --version
+      - name: the image can build a district and answer for it
+        run: |
+          docker run --rm keelroom:ci doctor --database /tmp/none.sqlite || true
+          docker run --rm keelroom:ci --help

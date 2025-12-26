@@ -3,6 +3,7 @@ import { up as district } from './001-district';
 import { up as fleet } from './002-fleet';
 import { up as roster } from './003-roster';
 import { up as billing } from './004-billing';
+import { up as notices } from './005-notices';
 
 export interface Migration {
   readonly id: number;
@@ -21,4 +22,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 2, name: 'fleet', up: fleet },
   { id: 3, name: 'roster', up: roster },
   { id: 4, name: 'billing', up: billing },
+  { id: 5, name: 'notices', up: notices },
 ];

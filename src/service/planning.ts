@@ -27,6 +27,9 @@ import type { PlanResult } from '../domain/window/plan';
 import { bestWindow, planTransit } from '../domain/window/plan';
 import type { MovementConditions } from '../domain/window/restriction';
 import type { TransitPlan } from '../domain/window/sweep';
+import type { NoticeEffects } from '../domain/notice/apply';
+import { cappedSpeed, noticeEffects } from '../domain/notice/apply';
+import { noticesInPeriod } from '../storage/notice-store';
 import { requireVessel } from '../storage/fleet-store';
 import { requireMovement, saveMovement } from '../storage/movement-store';
 import type { Context } from './context';
@@ -54,6 +57,7 @@ export interface MovementPlan {
   readonly movement: Movement;
   readonly passage: Passage;
   readonly result: PlanResult;
+  readonly notices: NoticeEffects;
 }
 
 export function directionFor(movement: Movement): Direction {
@@ -69,13 +73,17 @@ export function passageFor(
   context: Context,
   movement: Movement,
   speed = context.config.transitSpeed,
+  caps: Readonly<Record<string, number>> = {},
 ): Passage {
   const end = berthEnd(movement);
   if (end === 'SEA') {
     throw new InputError(`movement ${movement.reference} runs between the sea and the sea`);
   }
   const berth = requireBerth(context.district, end);
-  const reaches = reachesToBerth(context.district, berth);
+  const reaches = reachesToBerth(context.district, berth).map((reach) => {
+    const cap = caps[reach.id];
+    return cap === undefined ? reach : { ...reach, speedLimit: Math.min(reach.speedLimit, cap) };
+  });
   return buildPassage(reaches, directionFor(movement), {
     speed,
     startDelay: 20,
@@ -87,8 +95,16 @@ export function planMovement(context: Context, request: PlanRequest): MovementPl
   const movement = requireMovement(context.db, request.reference);
   const vessel = requireVessel(context.db, movement.vessel);
   const conditions = request.conditions ?? FAIR_WEATHER;
-  const passage = passageFor(context, movement);
   const bounds = request.bounds ?? windowAround(movement.requestedFor, request.searchHours ?? 12);
+  const firstPass = passageFor(context, movement);
+  const effects = noticeEffects({
+    notices: noticesInPeriod(context.db, bounds),
+    passage: firstPass,
+    period: bounds,
+    draught: movement.draught,
+    district: context.district.code,
+  });
+  const passage = passageFor(context, movement, context.config.transitSpeed, effects.speedCaps);
   const plan: TransitPlan = {
     district: context.district,
     passage,
@@ -100,12 +116,25 @@ export function planMovement(context: Context, request: PlanRequest): MovementPl
   const result = planTransit({
     plan,
     bounds,
-    movement: conditions.movement,
+    movement: {
+      ...conditions.movement,
+      ...(effects.daylightOnly ? { masterRequestsDaylight: true } : {}),
+    },
     position: context.position,
     rules: context.config.restrictions,
     twilight: context.config.twilightMinutes,
   });
-  return { movement, passage, result };
+  const blocked = effects.findings.filter((finding) => finding.severity === 'block');
+  const withNotices: PlanResult =
+    blocked.length === 0
+      ? { ...result, findings: [...result.findings, ...effects.findings] }
+      : {
+          ...result,
+          windows: [],
+          passable: false,
+          findings: [...result.findings, ...effects.findings],
+        };
+  return { movement, passage, result: withNotices, notices: effects };
 }
 
 export function windowAround(at: Minute, hours: number): Interval {
@@ -176,6 +205,17 @@ export function displacement(confirmation: Confirmation): number {
   return confirmation.startAt - confirmation.movement.requestedFor;
 }
 
+/** The deepest she may be presented at, taking any notice cap into account. */
 export function deepestDraughtOffered(plan: MovementPlan): Cm {
-  return plan.movement.draught;
+  const cap = plan.notices.draughtCap;
+  return cap === undefined ? plan.movement.draught : Math.min(cap, plan.movement.draught);
+}
+
+/** The speed a reach may be run at under the notices in force. */
+export function speedThrough(plan: MovementPlan, reach: string): number {
+  return cappedSpeed(
+    plan.notices,
+    reach,
+    plan.passage.legs.find((leg) => leg.reach.id === reach)?.speed ?? 0,
+  );
 }

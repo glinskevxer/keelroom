@@ -168,6 +168,36 @@ one account
 
 load accounts from a csv file
 
+### `keelroom notices`
+
+notices to mariners
+
+### `keelroom notices issue`
+
+issue a notice, kind one of closure, draught-cap, daylight-only, speed-cap, no-overtaking, information
+
+Options:
+  - `--kind <kind>` what sort of notice
+  - `--from <time>` when it starts
+  - `--to <time>` when it ends
+  - `--value <value>` centimetres for a draught cap, tenths of a knot for a speed cap
+
+### `keelroom notices list`
+
+the notice board
+
+Options:
+  - `--subject <subject>` only the notices binding on this reach or berth
+  - `--headlines` only what is in force now, one line each
+
+### `keelroom notices show`
+
+one notice
+
+### `keelroom notices withdraw`
+
+lift a notice early, keeping it readable
+
 ### `keelroom orders`
 
 the order book

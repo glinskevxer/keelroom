@@ -343,3 +343,30 @@ Options:
   - `--from <time>` start of the range, district local time
   - `--hours <hours>` how many hours to plot
   - `--step <minutes>` minutes between samples
+
+### `keelroom traffic`
+
+the channel, reach by reach
+
+### `keelroom traffic day`
+
+who is in which reach and where they meet
+
+Options:
+  - `--from <time>` start of the day
+  - `--days <days>` how many days
+
+### `keelroom traffic check`
+
+what a movement would run into at a start time
+
+Options:
+  - `--at <time>` the start to test, defaulting to the planned time
+
+### `keelroom traffic clear`
+
+the first start after a time that runs into nothing
+
+Options:
+  - `--from <time>` where to start looking
+  - `--step <minutes>` how far apart to try

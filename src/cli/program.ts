@@ -21,6 +21,7 @@ import { registerPlan } from './commands/plan';
 import { registerRoster } from './commands/roster';
 import { registerServe } from './commands/serve';
 import { registerTides } from './commands/tides';
+import { registerTraffic } from './commands/traffic';
 
 export interface RunOptions {
   readonly io: Io;
@@ -56,6 +57,7 @@ export function buildProgram(io: Io): Command {
   registerRoster(program, io);
   registerServe(program, io);
   registerTides(program, io);
+  registerTraffic(program, io);
   return program;
 }
 

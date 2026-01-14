@@ -370,3 +370,43 @@ the first start after a time that runs into nothing
 Options:
   - `--from <time>` where to start looking
   - `--step <minutes>` how far apart to try
+
+### `keelroom tugs`
+
+the towage fleet
+
+### `keelroom tugs list`
+
+the fleet and what it pulls
+
+### `keelroom tugs add`
+
+put a tug on the list
+
+Options:
+  - `--escort` she is fitted for escort work
+  - `--laid-up` she is not available
+
+### `keelroom tugs offer`
+
+what could be raised for a movement, without booking it
+
+### `keelroom tugs book`
+
+take the tugs for a movement
+
+### `keelroom tugs release`
+
+give the tugs back
+
+### `keelroom tugs booked`
+
+what is booked over a period
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
+### `keelroom tugs show`
+
+one tug

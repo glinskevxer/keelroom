@@ -22,6 +22,7 @@ import { registerRoster } from './commands/roster';
 import { registerServe } from './commands/serve';
 import { registerTides } from './commands/tides';
 import { registerTraffic } from './commands/traffic';
+import { registerTugs } from './commands/tugs';
 
 export interface RunOptions {
   readonly io: Io;
@@ -58,6 +59,7 @@ export function buildProgram(io: Io): Command {
   registerServe(program, io);
   registerTides(program, io);
   registerTraffic(program, io);
+  registerTugs(program, io);
   return program;
 }
 

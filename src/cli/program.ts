@@ -20,6 +20,7 @@ import { registerOrders } from './commands/orders';
 import { registerPlan } from './commands/plan';
 import { registerRoster } from './commands/roster';
 import { registerServe } from './commands/serve';
+import { registerStatistics } from './commands/statistics';
 import { registerTides } from './commands/tides';
 import { registerTraffic } from './commands/traffic';
 import { registerTugs } from './commands/tugs';
@@ -57,6 +58,7 @@ export function buildProgram(io: Io): Command {
   registerPlan(program, io);
   registerRoster(program, io);
   registerServe(program, io);
+  registerStatistics(program, io);
   registerTides(program, io);
   registerTraffic(program, io);
   registerTugs(program, io);

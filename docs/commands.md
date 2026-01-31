@@ -323,6 +323,27 @@ Options:
   - `--host <host>` address to bind
   - `--quiet` do not write an access log
 
+### `keelroom stats`
+
+what the district did
+
+### `keelroom stats return`
+
+the return for a period
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+  - `--headline` one line rather than the whole return
+
+### `keelroom stats compare`
+
+a period against the one a year earlier
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
 ### `keelroom tides`
 
 tide tables and curves

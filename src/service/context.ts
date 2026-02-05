@@ -20,6 +20,8 @@ export interface Context {
   readonly district: District;
   readonly position: Position;
   readonly config: DistrictConfig;
+  /** Whoever is at the terminal, which the audit trail records. */
+  readonly operator: string;
   /** The clock, so tests can hold time still. */
   now(): number;
 }
@@ -28,6 +30,8 @@ export interface ContextOptions {
   readonly now?: () => number;
   /** Bring the schema up to date before loading. */
   readonly migrateFirst?: boolean;
+  /** Who is at the terminal. */
+  readonly operator?: string;
 }
 
 export function contextFrom(db: Db, config: DistrictConfig, options: ContextOptions = {}): Context {
@@ -40,6 +44,7 @@ export function contextFrom(db: Db, config: DistrictConfig, options: ContextOpti
     district: stored.district,
     position: stored.position,
     config,
+    operator: options.operator ?? 'unnamed',
     now: options.now ?? (() => Math.floor(Date.now() / 60000)),
   };
 }

@@ -26,6 +26,7 @@ import { invoicesForAgent, creditsForAgent, allocationsFor } from '../storage/bi
 import { referencesIssuedIn, requireMovement, saveMovement } from '../storage/movement-store';
 import type { Context } from './context';
 import { localYear } from './context';
+import { note } from './audit';
 
 export interface OrderRequest {
   readonly kind: MovementKind;
@@ -116,6 +117,10 @@ export function placeOrder(context: Context, request: OrderRequest): OrderResult
     notes: request.notes,
   });
   saveMovement(context.db, movement);
+  note(context, 'order-placed', reference, {
+    note: `${vessel.name} for ${account.agent}`,
+    detail: { draught: request.draught, kind: request.kind },
+  });
   return { movement, findings: log.all() };
 }
 
@@ -147,6 +152,10 @@ export function amendOrder(
     status: 'ordered',
   });
   saveMovement(context.db, amended);
+  note(context, 'order-amended', reference, {
+    note: 'the agent changed the order',
+    detail: { draught: amended.draught, requestedFor: amended.requestedFor },
+  });
   return amended;
 }
 
@@ -154,6 +163,7 @@ export function cancelOrder(context: Context, reference: string, reason: string)
   const movement = requireMovement(context.db, reference);
   const cancelled = apply(movement, { to: 'cancelled', reason });
   saveMovement(context.db, cancelled);
+  note(context, 'order-cancelled', reference, { note: reason });
   return cancelled;
 }
 

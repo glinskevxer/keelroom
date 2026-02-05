@@ -30,6 +30,7 @@ import {
 } from '../storage/billing-store';
 import type { Context } from './context';
 import { localYear } from './context';
+import { note } from './audit';
 
 export function issueInvoice(context: Context, number: string): Invoice {
   const invoice = findInvoice(context.db, number);
@@ -38,6 +39,7 @@ export function issueInvoice(context: Context, number: string): Invoice {
   }
   const issued = moveTo(invoice, 'issued');
   setInvoiceStatus(context.db, number, 'issued');
+  note(context, 'invoice-issued', number, { note: `to ${issued.agent}` });
   return issued;
 }
 
@@ -72,6 +74,10 @@ export function takePayment(context: Context, request: PaymentRequest): PaymentR
     throw new InputError(`${request.agent} has nothing outstanding to set this payment against`);
   }
   savePayment(context.db, payment, result.allocations);
+  note(context, 'payment-taken', payment.reference, {
+    note: `from ${payment.agent}`,
+    detail: { amount: payment.amount },
+  });
   const cleared: string[] = [];
   const afterwards = [...already, ...result.allocations];
   for (const allocation of result.allocations) {
@@ -121,6 +127,10 @@ export function creditInvoice(context: Context, request: CreditRequest): CreditN
     existing,
   });
   saveCredit(context.db, credit);
+  note(context, 'invoice-credited', invoice.number, {
+    note: request.note,
+    detail: { amount: credit.amount, reason: credit.reason },
+  });
   const allocations = allocationsFor(context.db, invoice.agent);
   if (outstandingOn(invoice, [...existing, credit], allocations) === 0) {
     setInvoiceStatus(context.db, invoice.number, 'paid');

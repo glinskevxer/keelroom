@@ -18,6 +18,7 @@ export interface GlobalOptions {
   readonly database?: string;
   readonly format?: string;
   readonly now?: string;
+  readonly operator?: string;
 }
 
 export function loadConfig(options: GlobalOptions): DistrictConfig {
@@ -35,7 +36,10 @@ export function loadConfig(options: GlobalOptions): DistrictConfig {
 export function openFor(options: GlobalOptions): Context {
   const config = loadConfig(options);
   const now = options.now === undefined ? undefined : (): number => parseInstant(options.now ?? '');
-  return openContext(config, { ...(now === undefined ? {} : { now }) });
+  return openContext(config, {
+    ...(now === undefined ? {} : { now }),
+    operator: options.operator ?? process.env.KEELROOM_OPERATOR ?? 'unnamed',
+  });
 }
 
 /** Read a time written either as an instant or as district local time. */

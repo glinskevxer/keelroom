@@ -33,6 +33,7 @@ import { noticesInPeriod } from '../storage/notice-store';
 import { requireVessel } from '../storage/fleet-store';
 import { requireMovement, saveMovement } from '../storage/movement-store';
 import type { Context } from './context';
+import { note } from './audit';
 
 export interface Conditions {
   readonly transit: TransitConditions;
@@ -172,11 +173,15 @@ export function confirmMovement(context: Context, request: ConfirmRequest): Conf
       startAt,
     });
   }
-  const confirmed =
-    plan.movement.status === 'ordered'
-      ? apply(plan.movement, { to: 'confirmed', plannedFor: startAt })
-      : replan(plan.movement, startAt);
+  const replanned = plan.movement.status !== 'ordered';
+  const confirmed = replanned
+    ? replan(plan.movement, startAt)
+    : apply(plan.movement, { to: 'confirmed', plannedFor: startAt });
   saveMovement(context.db, confirmed);
+  note(context, replanned ? 'movement-replanned' : 'movement-confirmed', request.reference, {
+    note: replanned ? 'moved to another window' : 'confirmed against a window',
+    detail: { startAt },
+  });
   return { movement: confirmed, plan, startAt };
 }
 

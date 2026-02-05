@@ -10,6 +10,7 @@ import { Command } from 'commander';
 import { VERSION } from '../version';
 import { EXIT_CLEAN, EXIT_USAGE, describeError, exitCodeOf } from '../util/errors';
 import type { Io } from './output';
+import { registerAudit } from './commands/audit';
 import { registerBilling } from './commands/billing';
 import { registerDispatch } from './commands/dispatch';
 import { registerDistrict } from './commands/district';
@@ -41,6 +42,7 @@ export function buildProgram(io: Io): Command {
     .option('-d, --district <code>', 'district code to work in')
     .option('--database <path>', 'district file to open')
     .option('--now <instant>', 'treat this as the current time')
+    .option('--operator <name>', 'who is at the terminal, for the audit trail')
     .option('-f, --format <format>', 'text or json', 'text')
     .showHelpAfterError()
     .exitOverride();
@@ -48,6 +50,7 @@ export function buildProgram(io: Io): Command {
     writeOut: (text) => io.write(text.trimEnd()),
     writeErr: (text) => io.fail(text.trimEnd()),
   });
+  registerAudit(program, io);
   registerBilling(program, io);
   registerDispatch(program, io);
   registerDistrict(program, io);

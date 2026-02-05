@@ -33,6 +33,7 @@ import {
   allDuty,
 } from '../storage/roster-store';
 import type { Context } from './context';
+import { note } from './audit';
 import { passageFor } from './planning';
 
 export interface AssignRequest {
@@ -123,6 +124,13 @@ function commit(
     recordDuty(context.db, makeDutyEntry(pilot.id, movement.reference, period.from, period.to));
     saveBoard(context.db, board);
   });
+  note(context, 'pilot-assigned', movement.reference, {
+    note: `${pilot.id} ${pilot.name}`,
+    detail: { from: period.from, to: period.to },
+  });
+  if (override !== undefined) {
+    note(context, 'board-overridden', movement.reference, { note: override });
+  }
   return { movement: withNoteApplied, pilot, passes, period };
 }
 

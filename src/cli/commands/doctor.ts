@@ -7,22 +7,16 @@ import { EXIT_FINDINGS } from '../../util/errors';
 import { checkDatabase, summarise } from '../../storage/backup';
 import { renderPairs } from '../../util/table';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { loadConfig } from '../shared';
-import { openDatabase } from '../../storage/database';
+import { withDistrict } from '../run';
 
 export function registerDoctor(program: Command, io: Io): void {
   program
     .command('doctor')
     .description('check the district file and report anything wrong with it')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const config = loadConfig(options);
-      const db = openDatabase(config.databasePath, { readonly: true });
-      try {
-        const problems = checkDatabase(db);
-        const summary = summarise(db);
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
+        const problems = checkDatabase(context.db);
+        const summary = summarise(context.db);
         const text = [
           renderPairs([
             ['schema version', String(summary.version)],
@@ -36,12 +30,10 @@ export function registerDoctor(program: Command, io: Io): void {
             ? 'nothing wrong'
             : problems.map((problem) => `[${problem.check}] ${problem.detail}`).join('\n'),
         ].join('\n');
-        emit(io, readFormat(options.format), text, { summary, problems });
+        say(text, { summary, problems });
         if (problems.length > 0) {
           process.exitCode = EXIT_FINDINGS;
         }
-      } finally {
-        db.close();
-      }
-    });
+      }),
+    );
 }

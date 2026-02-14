@@ -23,11 +23,8 @@ import {
   vesselsNamed,
 } from '../../storage/fleet-store';
 import { importAccounts, importVessels } from '../../service/imports';
-import { closeContext } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor } from '../shared';
+import { withDistrict } from '../run';
 
 export function registerFleet(program: Command, io: Io): void {
   const vessels = program.command('vessels').description('the ships the district knows');
@@ -36,10 +33,8 @@ export function registerFleet(program: Command, io: Io): void {
     .command('list')
     .description('every ship on the books')
     .option('--name <prefix>', 'only ships whose name starts with this')
-    .action((local: { name?: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, local: { name?: string }) => {
         const ships =
           local.name === undefined ? allVessels(context.db) : vesselsNamed(context.db, local.name);
         const text = renderTable(
@@ -63,19 +58,15 @@ export function registerFleet(program: Command, io: Io): void {
           ]),
           { title: 'vessels', empty: 'no ships on the books' },
         );
-        emit(io, readFormat(options.format), text, ships);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, ships);
+      }),
+    );
 
   vessels
     .command('show <imo>')
     .description('one ship in full')
-    .action((imo: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, imo: string) => {
         const ship = findVessel(context.db, imo);
         if (ship === undefined) {
           throw new NotFoundError('vessel', imo);
@@ -97,44 +88,27 @@ export function registerFleet(program: Command, io: Io): void {
           ['bow thruster', ship.bowThruster ? 'yes' : 'no'],
           ['dangerous cargo', carriesDangerousCargo(ship) ? 'yes' : 'no'],
         ]);
-        emit(io, readFormat(options.format), text, {
-          ...ship,
-          units: pilotageUnits(ship),
-          summary: describeVessel(ship),
-        });
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, { ...ship, units: pilotageUnits(ship), summary: describeVessel(ship) });
+      }),
+    );
 
   vessels
     .command('import <path>')
     .description('load ship particulars from a csv file')
-    .action((path: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
         const summary = importVessels(context.db, readFileSync(path, 'utf8'), path);
-        emit(
-          io,
-          readFormat(options.format),
-          `wrote ${summary.written} ships from ${path}`,
-          summary,
-        );
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`wrote ${summary.written} ships from ${path}`, summary);
+      }),
+    );
 
   const agents = program.command('agents').description('the agents who order movements');
 
   agents
     .command('list')
     .description('every account')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
         const accounts = allAccounts(context.db);
         const text = renderTable(
           [
@@ -155,45 +129,30 @@ export function registerFleet(program: Command, io: Io): void {
           ]),
           { title: 'agents', empty: 'no accounts' },
         );
-        emit(io, readFormat(options.format), text, accounts);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, accounts);
+      }),
+    );
 
   agents
     .command('show <agent>')
     .description('one account')
-    .action((agent: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, agent: string) => {
         const account = findAccount(context.db, agent);
         if (account === undefined) {
           throw new NotFoundError('account', agent);
         }
-        emit(io, readFormat(options.format), describeAccount(account), account);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(describeAccount(account), account);
+      }),
+    );
 
   agents
     .command('import <path>')
     .description('load accounts from a csv file')
-    .action((path: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
         const summary = importAccounts(context.db, readFileSync(path, 'utf8'), path);
-        emit(
-          io,
-          readFormat(options.format),
-          `wrote ${summary.written} accounts from ${path}`,
-          summary,
-        );
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`wrote ${summary.written} accounts from ${path}`, summary);
+      }),
+    );
 }

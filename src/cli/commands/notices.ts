@@ -16,11 +16,10 @@ import {
   standingNotices,
   withdrawNotice,
 } from '../../storage/notice-store';
-import { closeContext, localYear } from '../../service/context';
+import { localYear } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor, readInteger, readTime } from '../shared';
+import { withDistrict } from '../run';
+import { readInteger, readTime } from '../shared';
 
 const KINDS: readonly NoticeKind[] = [
   'closure',
@@ -42,14 +41,15 @@ export function registerNotices(program: Command, io: Io): void {
     .requiredOption('--to <time>', 'when it ends')
     .option('--value <value>', 'centimetres for a draught cap, tenths of a knot for a speed cap')
     .action(
-      (
-        subject: string,
-        text: string[],
-        local: { kind: string; from: string; to: string; value?: string },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          subject: string,
+          text: string[],
+          local: { kind: string; from: string; to: string; value?: string },
+        ) => {
           const kind = KINDS.find((each) => each === local.kind);
           if (kind === undefined) {
             throw new NotFoundError('notice kind', local.kind);
@@ -66,11 +66,9 @@ export function registerNotices(program: Command, io: Io): void {
             issuedAt: context.now(),
           });
           saveNotice(context.db, notice);
-          emit(io, readFormat(options.format), `${notice.id} issued`, notice);
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(`${notice.id} issued`, notice);
+        },
+      ),
     );
 
   notices
@@ -78,38 +76,31 @@ export function registerNotices(program: Command, io: Io): void {
     .description('the notice board')
     .option('--subject <subject>', 'only the notices binding on this reach or berth')
     .option('--headlines', 'only what is in force now, one line each')
-    .action((local: { subject?: string; headlines?: boolean }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
-        const board =
-          local.subject === undefined
-            ? standingNotices(context.db)
-            : noticesOn(context.db, local.subject);
-        const reportOptions = { offset: context.district.offset, now: context.now() };
-        if (local.headlines === true) {
-          const lines = noticeHeadlines(board, reportOptions);
-          emit(
-            io,
-            readFormat(options.format),
-            lines.length === 0 ? 'nothing in force' : lines.join('\n'),
-            lines,
-          );
-          return;
-        }
-        emit(io, readFormat(options.format), renderNotices(board, reportOptions), board);
-      } finally {
-        closeContext(context);
-      }
-    });
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, local: { subject?: string; headlines?: boolean }) => {
+          const board =
+            local.subject === undefined
+              ? standingNotices(context.db)
+              : noticesOn(context.db, local.subject);
+          const reportOptions = { offset: context.district.offset, now: context.now() };
+          if (local.headlines === true) {
+            const lines = noticeHeadlines(board, reportOptions);
+            say(lines.length === 0 ? 'nothing in force' : lines.join('\n'), lines);
+            return;
+          }
+          say(renderNotices(board, reportOptions), board);
+        },
+      ),
+    );
 
   notices
     .command('show <id>')
     .description('one notice')
-    .action((id: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, id: string) => {
         const notice = findNotice(context.db, id);
         if (notice === undefined) {
           throw new NotFoundError('notice', id);
@@ -125,25 +116,19 @@ export function registerNotices(program: Command, io: Io): void {
           ['text', notice.text],
           ['offset', String(offset)],
         ]);
-        emit(io, readFormat(options.format), text, notice);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, notice);
+      }),
+    );
 
   notices
     .command('withdraw <id>')
     .description('lift a notice early, keeping it readable')
-    .action((id: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, id: string) => {
         if (!withdrawNotice(context.db, id)) {
           throw new NotFoundError('notice', id);
         }
-        emit(io, readFormat(options.format), `${id} withdrawn`, { id, withdrawn: true });
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`${id} withdrawn`, { id, withdrawn: true });
+      }),
+    );
 }

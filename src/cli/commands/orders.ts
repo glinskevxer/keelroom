@@ -20,15 +20,14 @@ import {
 } from '../../storage/movement-store';
 import { allVessels } from '../../storage/fleet-store';
 import { amendOrder, cancelOrder, placeOrder, refuseOrder } from '../../service/ordering';
-import { closeContext } from '../../service/context';
+import type { Context } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor, readMetres, readTime } from '../shared';
+import { withDistrict } from '../run';
+import { readMetres, readTime } from '../shared';
 
 const KINDS: MovementKind[] = ['arrival', 'departure', 'shift', 'anchorage', 'swing'];
 
-function vesselNames(context: ReturnType<typeof openFor>): Record<string, string> {
+function vesselNames(context: Context): Record<string, string> {
   return Object.fromEntries(allVessels(context.db).map((ship) => [ship.imo, ship.name]));
 }
 
@@ -45,21 +44,22 @@ export function registerOrders(program: Command, io: Io): void {
     .requiredOption('--at <time>', 'the time the agent wants')
     .option('--note <text>', 'anything to record with the order')
     .action(
-      (
-        vessel: string,
-        agent: string,
-        local: {
-          kind: string;
-          from: string;
-          to: string;
-          draught: string;
-          at: string;
-          note?: string;
-        },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          vessel: string,
+          agent: string,
+          local: {
+            kind: string;
+            from: string;
+            to: string;
+            draught: string;
+            at: string;
+            note?: string;
+          },
+        ) => {
           const kind = KINDS.find((each) => each === local.kind);
           if (kind === undefined) {
             throw new NotFoundError('movement kind', local.kind);
@@ -78,11 +78,9 @@ export function registerOrders(program: Command, io: Io): void {
             `taken as ${result.movement.reference}`,
             ...result.findings.map(describeFinding),
           ].join('\n');
-          emit(io, readFormat(options.format), text, result);
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(text, result);
+        },
+      ),
     );
 
   orders
@@ -91,44 +89,44 @@ export function registerOrders(program: Command, io: Io): void {
     .option('--from <time>', 'start of the range')
     .option('--days <days>', 'how many days to show', '2')
     .option('--agent <agent>', 'only this agent')
-    .action((local: { from?: string; days: string; agent?: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
-        const from =
-          local.from === undefined ? context.now() : readTime(local.from, context.district.offset);
-        const to = from + Number(local.days) * MINUTES_PER_DAY;
-        const movements =
-          local.agent === undefined
-            ? movementsInWindow(context.db, from, to)
-            : movementsForAgent(context.db, local.agent).filter(
-                (movement) =>
-                  (movement.plannedFor ?? movement.requestedFor) >= from &&
-                  (movement.plannedFor ?? movement.requestedFor) <= to,
-              );
-        const text = [
-          renderOrders(movements, {
-            offset: context.district.offset,
-            title: `orders from ${localDate(from, context.district.offset)}`,
-            withDate: true,
-            names: vesselNames(context),
-          }),
-          '',
-          renderCounts(countByState(movements)),
-        ].join('\n');
-        emit(io, readFormat(options.format), text, movements);
-      } finally {
-        closeContext(context);
-      }
-    });
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, local: { from?: string; days: string; agent?: string }) => {
+          const from =
+            local.from === undefined
+              ? context.now()
+              : readTime(local.from, context.district.offset);
+          const to = from + Number(local.days) * MINUTES_PER_DAY;
+          const movements =
+            local.agent === undefined
+              ? movementsInWindow(context.db, from, to)
+              : movementsForAgent(context.db, local.agent).filter(
+                  (movement) =>
+                    (movement.plannedFor ?? movement.requestedFor) >= from &&
+                    (movement.plannedFor ?? movement.requestedFor) <= to,
+                );
+          const text = [
+            renderOrders(movements, {
+              offset: context.district.offset,
+              title: `orders from ${localDate(from, context.district.offset)}`,
+              withDate: true,
+              names: vesselNames(context),
+            }),
+            '',
+            renderCounts(countByState(movements)),
+          ].join('\n');
+          say(text, movements);
+        },
+      ),
+    );
 
   orders
     .command('show <reference>')
     .description('one movement in full')
-    .action((reference: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
         const movement = findMovement(context.db, reference);
         if (movement === undefined) {
           throw new NotFoundError('movement', reference);
@@ -163,58 +161,50 @@ export function registerOrders(program: Command, io: Io): void {
           pairs.push(['all fast', formatLocal(times.allFast, offset)]);
         }
         const text = [renderPairs(pairs), ...movement.notes.map((note) => `- ${note}`)].join('\n');
-        emit(io, readFormat(options.format), text, { movement, times });
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, { movement, times });
+      }),
+    );
 
   orders
     .command('amend <reference>')
     .description('change the time or the draught on an order')
     .option('--at <time>', 'a new time')
     .option('--draught <metres>', 'a new draught')
-    .action((reference: string, local: { at?: string; draught?: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
-        const movement = amendOrder(context, reference, {
-          ...(local.at === undefined
-            ? {}
-            : { requestedFor: readTime(local.at, context.district.offset) }),
-          ...(local.draught === undefined ? {} : { draught: readMetres(local.draught, 'draught') }),
-        });
-        emit(io, readFormat(options.format), `amended ${movement.reference}`, movement);
-      } finally {
-        closeContext(context);
-      }
-    });
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, reference: string, local: { at?: string; draught?: string }) => {
+          const movement = amendOrder(context, reference, {
+            ...(local.at === undefined
+              ? {}
+              : { requestedFor: readTime(local.at, context.district.offset) }),
+            ...(local.draught === undefined
+              ? {}
+              : { draught: readMetres(local.draught, 'draught') }),
+          });
+          say(`amended ${movement.reference}`, movement);
+        },
+      ),
+    );
 
   orders
     .command('cancel <reference> <reason...>')
     .description('cancel an order')
-    .action((reference: string, reason: string[]) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string, reason: string[]) => {
         const movement = cancelOrder(context, reference, reason.join(' '));
-        emit(io, readFormat(options.format), `cancelled ${movement.reference}`, movement);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`cancelled ${movement.reference}`, movement);
+      }),
+    );
 
   orders
     .command('refuse <reference> <reason...>')
     .description('refuse an order the district cannot take')
-    .action((reference: string, reason: string[]) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string, reason: string[]) => {
         const movement = refuseOrder(context, reference, reason.join(' '));
-        emit(io, readFormat(options.format), `refused ${movement.reference}`, movement);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`refused ${movement.reference}`, movement);
+      }),
+    );
 }

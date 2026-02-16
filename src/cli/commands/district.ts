@@ -17,11 +17,8 @@ import { isStale, plannedDepth, surveyAgeDays } from '../../domain/chart/reach';
 import { renderStationSummary } from '../../report/tide';
 import { importHarmonics, importSurveys } from '../../service/imports';
 import { backupTo } from '../../storage/backup';
-import { closeContext } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor } from '../shared';
+import { withDistrict } from '../run';
 
 export function registerDistrict(program: Command, io: Io): void {
   const district = program.command('district').description('the channel and its charts');
@@ -29,10 +26,8 @@ export function registerDistrict(program: Command, io: Io): void {
   district
     .command('show')
     .description('the district as the planner sees it')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
         const text = [
           renderPairs([
             ['district', context.district.code],
@@ -46,22 +41,18 @@ export function registerDistrict(program: Command, io: Io): void {
           '',
           ...context.district.stations.map((station) => renderStationSummary(station)),
         ].join('\n');
-        emit(io, readFormat(options.format), text, {
+        say(text, {
           district: describeDistrict(context.district),
           reaches: context.district.reaches.map((reach) => reach.id),
         });
-      } finally {
-        closeContext(context);
-      }
-    });
+      }),
+    );
 
   district
     .command('reaches')
     .description('the reaches seaward first, with the depth the planner uses')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
         const rows = context.district.reaches.map((reach) => [
           String(reachOrder(context.district, reach.id)),
           reach.id,
@@ -90,19 +81,15 @@ export function registerDistrict(program: Command, io: Io): void {
           rows,
           { title: 'reaches', empty: 'no reaches' },
         );
-        emit(io, readFormat(options.format), text, context.district.reaches);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, context.district.reaches);
+      }),
+    );
 
   district
     .command('berths')
     .description('the berths and what they take')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
         const rows = context.district.berths.map((berth) => [
           berth.id,
           berth.name,
@@ -125,57 +112,35 @@ export function registerDistrict(program: Command, io: Io): void {
           rows,
           { title: 'berths', empty: 'no berths' },
         );
-        emit(io, readFormat(options.format), text, context.district.berths);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, context.district.berths);
+      }),
+    );
 
   district
     .command('survey <path>')
     .description('apply a survey csv to the reaches it names')
-    .action((path: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
         const summary = importSurveys(context.db, readFileSync(path, 'utf8'), path);
-        emit(
-          io,
-          readFormat(options.format),
-          `${summary.written} reaches resurveyed from ${path}`,
-          summary,
-        );
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`${summary.written} reaches resurveyed from ${path}`, summary);
+      }),
+    );
 
   district
     .command('harmonics <path>')
     .description('replace the harmonic constants of the stations a csv names')
-    .action((path: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
         const summary = importHarmonics(context.db, readFileSync(path, 'utf8'), path);
-        emit(
-          io,
-          readFormat(options.format),
-          `${summary.written} constants loaded from ${path}`,
-          summary,
-        );
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`${summary.written} constants loaded from ${path}`, summary);
+      }),
+    );
 
   district
     .command('backup <path>')
     .description('copy the district file, safely, while it is open')
-    .action(async (path: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, async ({ context, say }, path: string) => {
         const result = await backupTo(context.db, path);
         const text = renderPairs([
           ['written to', result.path],
@@ -184,9 +149,7 @@ export function registerDistrict(program: Command, io: Io): void {
           ['schema version', String(result.version)],
           ['taken at', formatLocal(context.now(), context.district.offset)],
         ]);
-        emit(io, readFormat(options.format), text, result);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, result);
+      }),
+    );
 }

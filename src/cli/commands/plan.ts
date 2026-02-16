@@ -9,11 +9,9 @@ import { renderPlan, planHeadline } from '../../report/plan';
 import { movementsInWindow } from '../../storage/movement-store';
 import { confirmMovement, planMovement, FAIR_WEATHER } from '../../service/planning';
 import type { Conditions } from '../../service/planning';
-import { closeContext } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor, readInteger, readMetres, readTime } from '../shared';
+import { withDistrict } from '../run';
+import { readInteger, readMetres, readTime } from '../shared';
 
 interface WeatherOptions {
   readonly wind?: string;
@@ -59,13 +57,14 @@ export function registerPlan(program: Command, io: Io): void {
     .option('--swell <metres>', 'significant wave height')
     .option('--density <thousandths>', 'water density, salt water being 1025')
     .action(
-      (
-        reference: string,
-        local: WeatherOptions & { hours: string; from?: string; to?: string },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          reference: string,
+          local: WeatherOptions & { hours: string; from?: string; to?: string },
+        ) => {
           const offset = context.district.offset;
           const bounds =
             local.from === undefined || local.to === undefined
@@ -77,16 +76,14 @@ export function registerPlan(program: Command, io: Io): void {
             conditions: conditionsFrom(local),
             ...(bounds === undefined ? {} : { bounds }),
           });
-          emit(io, readFormat(options.format), renderPlan(result.result, { offset }), {
+          say(renderPlan(result.result, { offset }), {
             reference,
             windows: result.result.windows,
             findings: result.result.findings,
             restrictions: result.result.restrictions,
           });
-        } finally {
-          closeContext(context);
-        }
-      },
+        },
+      ),
     );
 
   plan
@@ -94,35 +91,33 @@ export function registerPlan(program: Command, io: Io): void {
     .description('confirm a movement against a window')
     .option('--at <time>', 'start at this time rather than the best window')
     .option('--hours <hours>', 'how far either side to look', '12')
-    .action((reference: string, local: { at?: string; hours: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
-        const offset = context.district.offset;
-        const confirmation = confirmMovement(context, {
-          reference,
-          searchHours: readInteger(local.hours, 'hours'),
-          ...(local.at === undefined ? {} : { startAt: readTime(local.at, offset) }),
-        });
-        const text = `${reference} confirmed for ${formatLocal(confirmation.startAt, offset)}`;
-        emit(io, readFormat(options.format), text, {
-          reference,
-          startAt: confirmation.startAt,
-          movement: confirmation.movement,
-        });
-      } finally {
-        closeContext(context);
-      }
-    });
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, reference: string, local: { at?: string; hours: string }) => {
+          const offset = context.district.offset;
+          const confirmation = confirmMovement(context, {
+            reference,
+            searchHours: readInteger(local.hours, 'hours'),
+            ...(local.at === undefined ? {} : { startAt: readTime(local.at, offset) }),
+          });
+          const text = `${reference} confirmed for ${formatLocal(confirmation.startAt, offset)}`;
+          say(text, {
+            reference,
+            startAt: confirmation.startAt,
+            movement: confirmation.movement,
+          });
+        },
+      ),
+    );
 
   plan
     .command('sweep')
     .description('a headline for every movement that has no planned time yet')
     .option('--days <days>', 'how far ahead to look', '2')
-    .action((local: { days: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, local: { days: string }) => {
         const offset = context.district.offset;
         const days = readInteger(local.days, 'days');
         const movements = movementsInWindow(
@@ -134,14 +129,10 @@ export function registerPlan(program: Command, io: Io): void {
           const result = planMovement(context, { reference: movement.reference });
           return `${movement.reference} ${movement.vessel} ${planHeadline(result.result, { offset })}`;
         });
-        emit(
-          io,
-          readFormat(options.format),
+        say(
           lines.length === 0 ? 'nothing waiting to be planned' : lines.join('\n'),
           movements.map((movement) => movement.reference),
         );
-      } finally {
-        closeContext(context);
-      }
-    });
+      }),
+    );
 }

@@ -9,11 +9,9 @@ import { formatMetres } from '../../util/units';
 import { renderTable } from '../../util/table';
 import { adviseAt, bestDay, deepestForWindow, draughtLadder } from '../../service/advice';
 import { studyDredging, worstReach } from '../../service/dredging';
-import { closeContext } from '../../service/context';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor, readInteger, readMetres, readTime } from '../shared';
+import { withDistrict } from '../run';
+import { readInteger, readMetres, readTime } from '../shared';
 
 export function registerAdvice(program: Command, io: Io): void {
   const advice = program.command('advice').description('what a ship could do, before she orders');
@@ -28,21 +26,22 @@ export function registerAdvice(program: Command, io: Io): void {
     .option('--step <metres>', 'how far apart the rungs are', '0.20')
     .option('--outbound', 'she is sailing rather than arriving')
     .action(
-      (
-        vessel: string,
-        berth: string,
-        local: {
-          from?: string;
-          days: string;
-          low: string;
-          high: string;
-          step: string;
-          outbound?: boolean;
-        },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          vessel: string,
+          berth: string,
+          local: {
+            from?: string;
+            days: string;
+            low: string;
+            high: string;
+            step: string;
+            outbound?: boolean;
+          },
+        ) => {
           const offset = context.district.offset;
           const from = local.from === undefined ? context.now() : readTime(local.from, offset);
           const period = makeInterval(
@@ -75,11 +74,9 @@ export function registerAdvice(program: Command, io: Io): void {
             ]),
             { title: `${vessel} to ${berth}`, empty: 'nothing to advise' },
           );
-          emit(io, readFormat(options.format), text, ladder);
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(text, ladder);
+        },
+      ),
     );
 
   advice
@@ -90,14 +87,15 @@ export function registerAdvice(program: Command, io: Io): void {
     .option('--want <minutes>', 'how long a window she wants', '60')
     .option('--outbound', 'she is sailing rather than arriving')
     .action(
-      (
-        vessel: string,
-        berth: string,
-        local: { from?: string; days: string; want: string; outbound?: boolean },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          vessel: string,
+          berth: string,
+          local: { from?: string; days: string; want: string; outbound?: boolean },
+        ) => {
           const offset = context.district.offset;
           const from = local.from === undefined ? context.now() : readTime(local.from, offset);
           const period = makeInterval(
@@ -118,11 +116,9 @@ export function registerAdvice(program: Command, io: Io): void {
               : `deepest ${formatMetres(deepest)} m for a window of ${formatDuration(
                   adviseAt(context, request, deepest).windowMinutes,
                 )}`;
-          emit(io, readFormat(options.format), text, { vessel, berth, deepest: deepest ?? null });
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(text, { vessel, berth, deepest: deepest ?? null });
+        },
+      ),
     );
 
   advice
@@ -131,10 +127,16 @@ export function registerAdvice(program: Command, io: Io): void {
     .option('--from <time>', 'start looking here')
     .option('--days <days>', 'how many days to look over', '7')
     .action(
-      (vessel: string, berth: string, draught: string, local: { from?: string; days: string }) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          vessel: string,
+          berth: string,
+          draught: string,
+          local: { from?: string; days: string },
+        ) => {
           const offset = context.district.offset;
           const from = local.from === undefined ? context.now() : readTime(local.from, offset);
           const found = bestDay(
@@ -149,11 +151,9 @@ export function registerAdvice(program: Command, io: Io): void {
             found.map((each) => [localDate(each.day, offset), formatDuration(each.minutes)]),
             { title: `${vessel} at ${draught} m`, empty: 'nothing to advise' },
           );
-          emit(io, readFormat(options.format), text, found);
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(text, found);
+        },
+      ),
     );
 
   advice
@@ -162,39 +162,42 @@ export function registerAdvice(program: Command, io: Io): void {
     .option('--from <time>', 'start of the period')
     .option('--days <days>', 'how many days of movements to study', '7')
     .option('--by <metres>', 'how much deeper to try', '0.30')
-    .action((local: { from?: string; days: string; by: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
-        const offset = context.district.offset;
-        const from = local.from === undefined ? context.now() : readTime(local.from, offset);
-        const period = makeInterval(from, from + readInteger(local.days, 'days') * MINUTES_PER_DAY);
-        const study = studyDredging(context, period, readMetres(local.by, 'by'));
-        const text = [
-          renderTable(
-            [
-              { heading: 'reach' },
-              { heading: 'window gained', align: 'right' },
-              { heading: 'movements blocked', align: 'right' },
-            ],
-            study.reaches.map((reach) => [
-              reach.reach,
-              formatDuration(reach.minutesGained),
-              String(reach.movementsBlocked),
-            ]),
-            {
-              title: `deepening by ${formatMetres(study.deepenBy)} m over ${study.movements} movements`,
-              empty: 'no reaches',
-            },
-          ),
-          '',
-          worstReach(study) === undefined
-            ? 'nothing to dredge'
-            : `dredge ${worstReach(study)?.reach} first`,
-        ].join('\n');
-        emit(io, readFormat(options.format), text, study);
-      } finally {
-        closeContext(context);
-      }
-    });
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, local: { from?: string; days: string; by: string }) => {
+          const offset = context.district.offset;
+          const from = local.from === undefined ? context.now() : readTime(local.from, offset);
+          const period = makeInterval(
+            from,
+            from + readInteger(local.days, 'days') * MINUTES_PER_DAY,
+          );
+          const study = studyDredging(context, period, readMetres(local.by, 'by'));
+          const text = [
+            renderTable(
+              [
+                { heading: 'reach' },
+                { heading: 'window gained', align: 'right' },
+                { heading: 'movements blocked', align: 'right' },
+              ],
+              study.reaches.map((reach) => [
+                reach.reach,
+                formatDuration(reach.minutesGained),
+                String(reach.movementsBlocked),
+              ]),
+              {
+                title: `deepening by ${formatMetres(study.deepenBy)} m over ${study.movements} movements`,
+                empty: 'no reaches',
+              },
+            ),
+            '',
+            worstReach(study) === undefined
+              ? 'nothing to dredge'
+              : `dredge ${worstReach(study)?.reach} first`,
+          ].join('\n');
+          say(text, study);
+        },
+      ),
+    );
 }

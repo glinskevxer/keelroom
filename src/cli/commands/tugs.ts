@@ -10,13 +10,11 @@ import { makeTug } from '../../domain/tug/tug';
 import { byOwner, fleetPull } from '../../domain/tug/tug';
 import { allTugs, bookingsInPeriod, saveTug } from '../../storage/tug-store';
 import { bookForMovement, heldBy, offerTugs, releaseForMovement } from '../../service/towage';
-import { closeContext } from '../../service/context';
 import { makeInterval } from '../../util/interval';
 import { MINUTES_PER_DAY } from '../../util/clock';
 import type { Io } from '../output';
-import { emit, readFormat } from '../output';
-import type { GlobalOptions } from '../shared';
-import { openFor, readInteger, readTime } from '../shared';
+import { withDistrict } from '../run';
+import { readInteger, readTime } from '../shared';
 
 export function registerTugs(program: Command, io: Io): void {
   const tugs = program.command('tugs').description('the towage fleet');
@@ -24,10 +22,8 @@ export function registerTugs(program: Command, io: Io): void {
   tugs
     .command('list')
     .description('the fleet and what it pulls')
-    .action(() => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
         const fleet = allTugs(context.db);
         const text = [
           renderTable(
@@ -52,11 +48,9 @@ export function registerTugs(program: Command, io: Io): void {
           '',
           `${fleetPull(fleet)} tonnes across ${Object.keys(byOwner(fleet)).length} owners`,
         ].join('\n');
-        emit(io, readFormat(options.format), text, fleet);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, fleet);
+      }),
+    );
 
   tugs
     .command('add <id> <name> <owner> <pull>')
@@ -64,16 +58,17 @@ export function registerTugs(program: Command, io: Io): void {
     .option('--escort', 'she is fitted for escort work')
     .option('--laid-up', 'she is not available')
     .action(
-      (
-        id: string,
-        name: string,
-        owner: string,
-        pull: string,
-        local: { escort?: boolean; laidUp?: boolean },
-      ) => {
-        const options = program.opts<GlobalOptions>();
-        const context = openFor(options);
-        try {
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          id: string,
+          name: string,
+          owner: string,
+          pull: string,
+          local: { escort?: boolean; laidUp?: boolean },
+        ) => {
           const tug = makeTug({
             id,
             name,
@@ -83,20 +78,16 @@ export function registerTugs(program: Command, io: Io): void {
             active: local.laidUp !== true,
           });
           saveTug(context.db, tug);
-          emit(io, readFormat(options.format), `${tug.id} ${tug.name} on the list`, tug);
-        } finally {
-          closeContext(context);
-        }
-      },
+          say(`${tug.id} ${tug.name} on the list`, tug);
+        },
+      ),
     );
 
   tugs
     .command('offer <reference>')
     .description('what could be raised for a movement, without booking it')
-    .action((reference: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
         const offer = offerTugs(context, reference);
         const text = renderPairs([
           ['movement', reference],
@@ -107,58 +98,41 @@ export function registerTugs(program: Command, io: Io): void {
           ['pull offered', `${offer.pull} t`],
           ['met', offer.met ? 'yes' : `no, ${offer.reason ?? 'unknown'}`],
         ]);
-        emit(io, readFormat(options.format), text, offer);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, offer);
+      }),
+    );
 
   tugs
     .command('book <reference>')
     .description('take the tugs for a movement')
-    .action((reference: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
         const result = bookForMovement(context, reference);
-        emit(
-          io,
-          readFormat(options.format),
-          `${reference} has ${result.tugs.map((tug) => tug.id).join(' ')}`,
-          result,
-        );
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(`${reference} has ${result.tugs.map((tug) => tug.id).join(' ')}`, result);
+      }),
+    );
 
   tugs
     .command('release <reference>')
     .description('give the tugs back')
-    .action((reference: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
         const released = releaseForMovement(context, reference);
-        emit(io, readFormat(options.format), `${released} tugs released`, {
+        say(`${released} tugs released`, {
           reference,
           released,
           held: heldBy(context, reference),
         });
-      } finally {
-        closeContext(context);
-      }
-    });
+      }),
+    );
 
   tugs
     .command('booked')
     .description('what is booked over a period')
     .option('--from <time>', 'start of the period')
     .option('--days <days>', 'how many days', '1')
-    .action((local: { from?: string; days: string }) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
         const offset = context.district.offset;
         const from = local.from === undefined ? context.now() : readTime(local.from, offset);
         const period = makeInterval(from, from + readInteger(local.days, 'days') * MINUTES_PER_DAY);
@@ -173,26 +147,20 @@ export function registerTugs(program: Command, io: Io): void {
           ]),
           { title: 'tug bookings', empty: 'nothing booked' },
         );
-        emit(io, readFormat(options.format), text, bookings);
-      } finally {
-        closeContext(context);
-      }
-    });
+        say(text, bookings);
+      }),
+    );
 
   tugs
     .command('show <id>')
     .description('one tug')
-    .action((id: string) => {
-      const options = program.opts<GlobalOptions>();
-      const context = openFor(options);
-      try {
+    .action(
+      withDistrict(program, io, ({ context, say }, id: string) => {
         const tug = allTugs(context.db).find((each) => each.id === id);
         if (tug === undefined) {
           throw new NotFoundError('tug', id);
         }
-        emit(
-          io,
-          readFormat(options.format),
+        say(
           renderPairs([
             ['tug', tug.id],
             ['name', tug.name],
@@ -203,8 +171,6 @@ export function registerTugs(program: Command, io: Io): void {
           ]),
           tug,
         );
-      } finally {
-        closeContext(context);
-      }
-    });
+      }),
+    );
 }

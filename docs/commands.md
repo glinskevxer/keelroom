@@ -192,6 +192,15 @@ replace the harmonic constants of the stations a csv names
 
 copy the district file, safely, while it is open
 
+### `keelroom district export`
+
+write a csv extract, one of movements, invoices, duty
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+  - `--to-file <path>` write to a file rather than to the terminal
+
 ### `keelroom doctor`
 
 check the district file and report anything wrong with it

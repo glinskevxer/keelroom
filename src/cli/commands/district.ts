@@ -16,7 +16,13 @@ import {
 import { isStale, plannedDepth, surveyAgeDays } from '../../domain/chart/reach';
 import { renderStationSummary } from '../../report/tide';
 import { importHarmonics, importSurveys } from '../../service/imports';
+import { buildExport, exportNames } from '../../service/exports';
 import { backupTo } from '../../storage/backup';
+import { writeFileSync } from 'node:fs';
+import { MINUTES_PER_DAY } from '../../util/clock';
+import { makeInterval } from '../../util/interval';
+import { NotFoundError } from '../../util/errors';
+import { readInteger, readTime } from '../shared';
 import type { Io } from '../output';
 import { withDistrict } from '../run';
 
@@ -151,5 +157,45 @@ export function registerDistrict(program: Command, io: Io): void {
         ]);
         say(text, result);
       }),
+    );
+
+  district
+    .command('export <name>')
+    .description(`write a csv extract, one of ${exportNames().join(', ')}`)
+    .option('--from <time>', 'start of the period')
+    .option('--days <days>', 'how many days', '30')
+    .option('--to-file <path>', 'write to a file rather than to the terminal')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          name: string,
+          local: { from?: string; days: string; toFile?: string },
+        ) => {
+          const chosen = exportNames().find((each) => each === name);
+          if (chosen === undefined) {
+            throw new NotFoundError('export', name);
+          }
+          const offset = context.district.offset;
+          const days = readInteger(local.days, 'days');
+          const from =
+            local.from === undefined
+              ? context.now() - days * MINUTES_PER_DAY
+              : readTime(local.from, offset);
+          const period = makeInterval(from, from + days * MINUTES_PER_DAY);
+          const result = buildExport(context, chosen, period);
+          if (local.toFile !== undefined) {
+            writeFileSync(local.toFile, result.csv);
+            say(`wrote ${result.rows} rows to ${local.toFile}`, {
+              name: result.name,
+              rows: result.rows,
+            });
+            return;
+          }
+          say(result.csv.trimEnd(), { name: result.name, rows: result.rows, csv: result.csv });
+        },
+      ),
     );
 }

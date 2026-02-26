@@ -90,3 +90,33 @@ describe('backing up', () => {
     expect(result.io.text()).toContain('schema version');
   });
 });
+
+describe('exports', () => {
+  it('write the movement return to the terminal', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke(
+      'district',
+      'export',
+      'movements',
+      '--from',
+      '2025-04-01T00:00',
+      '--days',
+      '3',
+    );
+    expect(result.io.text().split('\n')[0]).toContain('reference,kind,status');
+  });
+
+  it('write to a file when asked', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'movements.csv');
+    const result = await harness.invoke('district', 'export', 'movements', '--to-file', path);
+    expect(result.io.text()).toContain('wrote 0 rows');
+    expect(existsSync(path)).toBe(true);
+  });
+
+  it('refuse an export nobody has', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('district', 'export', 'nonsense');
+    expect(result.io.errorText()).toContain('no export with reference');
+  });
+});

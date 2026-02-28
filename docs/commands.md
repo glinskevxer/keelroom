@@ -201,6 +201,22 @@ Options:
   - `--days <days>` how many days
   - `--to-file <path>` write to a file rather than to the terminal
 
+### `keelroom district diary`
+
+who is lying where over the next few days
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
+### `keelroom district free`
+
+which berths could take a ship over a period
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
 ### `keelroom doctor`
 
 check the district file and report anything wrong with it

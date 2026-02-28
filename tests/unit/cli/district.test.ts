@@ -120,3 +120,44 @@ describe('exports', () => {
     expect(result.io.errorText()).toContain('no export with reference');
   });
 });
+
+describe('the berth diary', () => {
+  it('says nobody is alongside when nothing is planned', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('district', 'diary', '--days', '3');
+    expect(result.io.text()).toContain('nobody alongside');
+    expect(result.io.text()).toContain('no berth is double booked');
+  });
+
+  it('lists a ship that has been confirmed in', async () => {
+    harness = cliHarness();
+    const placed = await harness.invoke(
+      'orders',
+      'place',
+      '9074729',
+      'SEAWAY',
+      '--kind',
+      'arrival',
+      '--from',
+      'SEA',
+      '--to',
+      'GRAIN-3',
+      '--draught',
+      '10.00',
+      '--at',
+      '2025-04-03T06:00',
+    );
+    const reference = /M-\d{4}-\d{4}/.exec(placed.io.text())?.[0] ?? '';
+    await harness.invoke('plan', 'confirm', reference);
+    const result = await harness.invoke('district', 'diary', '--days', '5');
+    expect(result.io.text()).toContain('GRAIN-3');
+    expect(result.io.text()).toContain('still there');
+  });
+
+  it('says which berths could take a ship', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('district', 'free', '9074729', '10.00', '--days', '2');
+    expect(result.io.text()).toContain('berths for 9074729');
+    expect(result.io.text()).toContain('GRAIN-3');
+  });
+});

@@ -17,6 +17,8 @@ import { isStale, plannedDepth, surveyAgeDays } from '../../domain/chart/reach';
 import { renderStationSummary } from '../../report/tide';
 import { importHarmonics, importSurveys } from '../../service/imports';
 import { buildExport, exportNames } from '../../service/exports';
+import { berthsFor, diaryForDays, utilisation } from '../../service/berths';
+import { readMetres } from '../shared';
 import { backupTo } from '../../storage/backup';
 import { writeFileSync } from 'node:fs';
 import { MINUTES_PER_DAY } from '../../util/clock';
@@ -195,6 +197,92 @@ export function registerDistrict(program: Command, io: Io): void {
             return;
           }
           say(result.csv.trimEnd(), { name: result.name, rows: result.rows, csv: result.csv });
+        },
+      ),
+    );
+
+  district
+    .command('diary')
+    .description('who is lying where over the next few days')
+    .option('--from <time>', 'start of the period')
+    .option('--days <days>', 'how many days', '7')
+    .action(
+      withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
+        const offset = context.district.offset;
+        const from = local.from === undefined ? context.now() : readTime(local.from, offset);
+        const diary = diaryForDays(context, from, readInteger(local.days, 'days'));
+        const stays = renderTable(
+          [
+            { heading: 'berth' },
+            { heading: 'vessel' },
+            { heading: 'from' },
+            { heading: 'to' },
+            { heading: 'arrival' },
+          ],
+          diary.stays.map((stay) => [
+            stay.berth,
+            stay.vessel,
+            formatLocal(stay.from, offset),
+            stay.to === undefined ? 'still there' : formatLocal(stay.to, offset),
+            stay.arrival,
+          ]),
+          { title: 'berth diary', empty: 'nobody alongside' },
+        );
+        const clashes =
+          diary.conflicts.length === 0
+            ? 'no berth is double booked'
+            : diary.conflicts
+                .map((clash) => `${clash.berth}: ${clash.first} and ${clash.second}`)
+                .join('\n');
+        const busy = utilisation(diary)
+          .map((each) => `${each.berth} ${each.percent} percent`)
+          .join(', ');
+        say([stays, '', clashes, '', busy].join('\n'), diary);
+      }),
+    );
+
+  district
+    .command('free <vessel> <draught>')
+    .description('which berths could take a ship over a period')
+    .option('--from <time>', 'start of the period')
+    .option('--days <days>', 'how many days', '2')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          vessel: string,
+          draught: string,
+          local: { from?: string; days: string },
+        ) => {
+          const offset = context.district.offset;
+          const from = local.from === undefined ? context.now() : readTime(local.from, offset);
+          const period = makeInterval(
+            from,
+            from + readInteger(local.days, 'days') * MINUTES_PER_DAY,
+          );
+          const found = berthsFor(context, {
+            vessel,
+            draught: readMetres(draught, 'draught'),
+            period,
+          });
+          const text = renderTable(
+            [
+              { heading: 'berth' },
+              { heading: 'free' },
+              { heading: 'fits' },
+              { heading: 'why not' },
+            ],
+            found.map((candidate) => [
+              candidate.berth.id,
+              candidate.free ? 'yes' : 'no',
+              candidate.fits ? 'yes' : 'no',
+              candidate.reason ?? '',
+            ]),
+            { title: `berths for ${vessel}`, empty: 'no berths' },
+          );
+          say(text, found);
         },
       ),
     );

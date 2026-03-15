@@ -432,6 +432,30 @@ Options:
   - `--from <time>` start of the period
   - `--days <days>` how many days
 
+### `keelroom tariff`
+
+the published books
+
+### `keelroom tariff list`
+
+every book in the order it took effect
+
+### `keelroom tariff show`
+
+one book, or the one in force
+
+### `keelroom tariff publish`
+
+publish a book from a json file
+
+### `keelroom tariff simulate`
+
+what a rise would have done to a period
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
 ### `keelroom tides`
 
 tide tables and curves

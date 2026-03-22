@@ -14,6 +14,7 @@
 
 import { InputError } from '../util/errors';
 import type { Minute } from '../util/clock';
+import { MINUTES_PER_DAY } from '../util/clock';
 import type { Interval } from '../util/interval';
 import { makeInterval } from '../util/interval';
 import type { Cm } from '../util/units';
@@ -31,6 +32,8 @@ import type { NoticeEffects } from '../domain/notice/apply';
 import { cappedSpeed, noticeEffects } from '../domain/notice/apply';
 import { noticesInPeriod } from '../storage/notice-store';
 import { requireVessel } from '../storage/fleet-store';
+import { weatherAround } from '../storage/weather-store';
+import { readingAt } from '../domain/weather/observation';
 import { requireMovement, saveMovement } from '../storage/movement-store';
 import type { Context } from './context';
 import { note } from './audit';
@@ -44,6 +47,36 @@ export const FAIR_WEATHER: Conditions = {
   transit: { density: 1025, waveHeight: 40, speed: 80 },
   movement: { wind: 10, visibility: 8000 },
 };
+
+/**
+ * The conditions to plan against when the caller did not name any: the forecast
+ * for the time she will run, or the last observation before it. A district with
+ * no weather log at all falls back to fair weather, which is a decision rather
+ * than an accident, and the plan says which it used.
+ */
+export function conditionsFromLog(
+  context: Context,
+  at: Minute,
+): { conditions: Conditions; source: 'forecast' | 'observed' | 'assumed'; stale: boolean } {
+  // a day either side, so an old observation is still found and reported as old
+  const found = readingAt(weatherAround(context.db, at, MINUTES_PER_DAY), at);
+  if (found === undefined) {
+    return { conditions: FAIR_WEATHER, source: 'assumed', stale: false };
+  }
+  const reading = found.reading;
+  return {
+    conditions: {
+      transit: {
+        density: reading.density,
+        waveHeight: reading.swell,
+        speed: context.config.transitSpeed,
+      },
+      movement: { wind: reading.wind, visibility: reading.visibility },
+    },
+    source: reading.source,
+    stale: found.stale,
+  };
+}
 
 export interface PlanRequest {
   readonly reference: string;
@@ -59,6 +92,8 @@ export interface MovementPlan {
   readonly passage: Passage;
   readonly result: PlanResult;
   readonly notices: NoticeEffects;
+  /** Where the weather in the plan came from. */
+  readonly weather: 'forecast' | 'observed' | 'assumed' | 'given';
 }
 
 export function directionFor(movement: Movement): Direction {
@@ -95,8 +130,10 @@ export function passageFor(
 export function planMovement(context: Context, request: PlanRequest): MovementPlan {
   const movement = requireMovement(context.db, request.reference);
   const vessel = requireVessel(context.db, movement.vessel);
-  const conditions = request.conditions ?? FAIR_WEATHER;
   const bounds = request.bounds ?? windowAround(movement.requestedFor, request.searchHours ?? 12);
+  const fromLog = conditionsFromLog(context, movement.plannedFor ?? movement.requestedFor);
+  const conditions = request.conditions ?? fromLog.conditions;
+  const weather = request.conditions === undefined ? fromLog.source : 'given';
   const firstPass = passageFor(context, movement);
   const effects = noticeEffects({
     notices: noticesInPeriod(context.db, bounds),
@@ -135,7 +172,7 @@ export function planMovement(context: Context, request: PlanRequest): MovementPl
           passable: false,
           findings: [...result.findings, ...effects.findings],
         };
-  return { movement, passage, result: withNotices, notices: effects };
+  return { movement, passage, result: withNotices, notices: effects, weather };
 }
 
 export function windowAround(at: Minute, hours: number): Interval {

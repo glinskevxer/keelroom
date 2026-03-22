@@ -27,6 +27,7 @@ import { registerTariff } from './commands/tariff';
 import { registerTides } from './commands/tides';
 import { registerTraffic } from './commands/traffic';
 import { registerTugs } from './commands/tugs';
+import { registerWeather } from './commands/weather';
 
 export interface RunOptions {
   readonly io: Io;
@@ -69,6 +70,7 @@ export function buildProgram(io: Io): Command {
   registerTides(program, io);
   registerTraffic(program, io);
   registerTugs(program, io);
+  registerWeather(program, io);
   return program;
 }
 

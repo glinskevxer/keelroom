@@ -543,3 +543,30 @@ Options:
 ### `keelroom tugs show`
 
 one tug
+
+### `keelroom weather`
+
+the weather log
+
+### `keelroom weather log`
+
+record an observation
+
+Options:
+  - `--at <time>` when it was taken, if not now
+  - `--direction <degrees>` where the wind is from
+  - `--swell <metres>` significant wave height
+  - `--density <thousandths>` water density
+  - `--forecast` this is a forecast rather than an observation
+
+### `keelroom weather show`
+
+the log over a period
+
+Options:
+  - `--from <time>` start of the period
+  - `--days <days>` how many days
+
+### `keelroom weather at`
+
+the reading a plan for that time would use

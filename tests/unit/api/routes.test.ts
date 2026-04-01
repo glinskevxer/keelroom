@@ -169,3 +169,52 @@ describe('the routes', () => {
     expect(body.heights).toHaveLength(2);
   });
 });
+
+describe('the rest of the read side', () => {
+  it('serves the notices in force and the standing ones', () => {
+    harness = testContext();
+    const body = call('/notices').body as { inForce: unknown[]; standing: unknown[] };
+    expect(body.inForce).toEqual([]);
+    expect(body.standing).toEqual([]);
+  });
+
+  it('serves the traffic for the day', () => {
+    harness = testContext();
+    const body = call('/traffic', { days: '2' }).body as { conflicts: unknown[] };
+    expect(body.conflicts).toEqual([]);
+  });
+
+  it('serves the berth diary with the utilisation', () => {
+    harness = testContext();
+    const body = call('/berths', { days: '3' }).body as { utilisation: unknown[] };
+    expect(Array.isArray(body.utilisation)).toBe(true);
+  });
+
+  it('serves the weather log and what a plan would use', () => {
+    harness = testContext();
+    const body = call('/weather').body as { log: unknown[]; planningWith: unknown };
+    expect(body.log).toEqual([]);
+    expect(body.planningWith).toBeNull();
+  });
+
+  it('serves the tug fleet and its bookings', () => {
+    harness = testContext();
+    const body = call('/tugs').body as { fleet: unknown[]; bookings: unknown[] };
+    expect(body.fleet).toEqual([]);
+    expect(body.bookings).toEqual([]);
+  });
+
+  it('serves the district return', () => {
+    harness = testContext();
+    const body = call('/return', { days: '7' }).body as { summary: { ordered: number } };
+    expect(body.summary.ordered).toBe(0);
+  });
+
+  it('lists every route on the index', () => {
+    harness = testContext();
+    const body = call('/').body as { routes: { path: string }[] };
+    for (const path of ['/notices', '/traffic', '/berths', '/weather', '/tugs', '/return']) {
+      expect(body.routes.some((route) => route.path === path)).toBe(true);
+    }
+  });
+});

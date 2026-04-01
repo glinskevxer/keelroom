@@ -28,6 +28,14 @@ import { planMovement } from '../service/planning';
 import { statementFor } from '../service/collections';
 import type { Context } from '../service/context';
 import { Router, queryInteger } from './router';
+import { standingNotices, noticesOn } from '../storage/notice-store';
+import { currentNotices } from '../domain/notice/notice';
+import { trafficDay } from '../service/traffic';
+import { diaryForDays, utilisation } from '../service/berths';
+import { returnForDays } from '../service/statistics';
+import { weatherBetween } from '../storage/weather-store';
+import { readingAt } from '../domain/weather/observation';
+import { allTugs, bookingsInPeriod } from '../storage/tug-store';
 import { order } from '../domain/roster/board';
 import { VERSION } from '../version';
 
@@ -161,6 +169,75 @@ export function buildRouter(context: Context): Router {
         grade: byId.get(id)?.grade ?? null,
       })),
     };
+  });
+
+  router.get('/notices', (request) => {
+    const subject = request.query.subject;
+    const notices =
+      subject === undefined ? standingNotices(context.db) : noticesOn(context.db, subject);
+    return {
+      status: 200,
+      body: {
+        inForce: currentNotices(notices, context.now()),
+        standing: notices,
+      },
+    };
+  });
+
+  router.get('/traffic', (request) => {
+    const days = queryInteger(request, 'days', 1);
+    const day = trafficDay(context, context.now(), days);
+    return {
+      status: 200,
+      body: {
+        movements: day.movements,
+        occupancies: day.occupancies,
+        conflicts: day.conflicts,
+      },
+    };
+  });
+
+  router.get('/berths', (request) => {
+    const days = queryInteger(request, 'days', 7);
+    const diary = diaryForDays(context, context.now(), days);
+    return {
+      status: 200,
+      body: {
+        stays: diary.stays,
+        conflicts: diary.conflicts,
+        open: diary.open,
+        utilisation: utilisation(diary),
+      },
+    };
+  });
+
+  router.get('/weather', (request) => {
+    const hours = queryInteger(request, 'hours', 24);
+    const log = weatherBetween(context.db, context.now() - hours * 60, context.now() + hours * 60);
+    return {
+      status: 200,
+      body: {
+        log,
+        planningWith: readingAt(log, context.now())?.reading ?? null,
+      },
+    };
+  });
+
+  router.get('/tugs', (request) => {
+    const hours = queryInteger(request, 'hours', 24);
+    const period = makeInterval(context.now(), context.now() + hours * 60);
+    return {
+      status: 200,
+      body: {
+        fleet: allTugs(context.db),
+        bookings: bookingsInPeriod(context.db, period),
+      },
+    };
+  });
+
+  router.get('/return', (request) => {
+    const days = queryInteger(request, 'days', 30);
+    return { status: 200, body: returnForDays(context, context.now() - days * 1440, days) };
   });
 
   router.get('/windows', (request) => {

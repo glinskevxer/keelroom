@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { EXIT_CLEAN, EXIT_USAGE } from '../../../src/util/errors';
+import { run } from '../../../src/cli/program';
 import { emit, readFormat, recordingIo } from '../../../src/cli/output';
 import { VERSION } from '../../../src/version';
 import { cliHarness } from '../../support/cli';
@@ -136,5 +139,33 @@ describe('tides', () => {
     const parsed = JSON.parse(result.io.text());
     expect(parsed.station).toBe('NARROWS');
     expect(parsed.extremes.length).toBeGreaterThan(2);
+  });
+});
+
+describe('init', () => {
+  it('builds a district file from the example description', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'district.json');
+    const fresh = join(harness.directory, 'fresh.sqlite');
+    writeFileSync(
+      path,
+      readFileSync(join(__dirname, '..', '..', '..', 'docs', 'example-district.json'), 'utf8'),
+    );
+    const io = recordingIo();
+    const code = await run(['--config', harness.configPath, '--database', fresh, 'init', path], {
+      io,
+    });
+    expect(code).toBe(EXIT_CLEAN);
+    expect(io.text()).toContain('district   KLR');
+    expect(existsSync(fresh)).toBe(true);
+  });
+
+  it('refuses a description that is not one', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'district.json');
+    writeFileSync(path, '{"code":"nope"}');
+    const result = await harness.invoke('init', path);
+    expect(result.code).toBe(EXIT_USAGE);
+    expect(result.io.errorText()).toContain('not valid');
   });
 });

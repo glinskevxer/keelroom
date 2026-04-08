@@ -1,0 +1,87 @@
+{
+  "code": "KLR",
+  "name": "Keel Room",
+  "utcOffset": -240,
+  "latitude": 44.65,
+  "longitude": -63.57,
+  "stations": [
+    {
+      "id": "NARROWS",
+      "name": "The Narrows",
+      "meanLevel": 210,
+      "terms": [
+        { "name": "M2", "amplitude": 168, "phase": 231.4 },
+        { "name": "S2", "amplitude": 31, "phase": 258.9 },
+        { "name": "N2", "amplitude": 37, "phase": 210.8 },
+        { "name": "K1", "amplitude": 12, "phase": 96.2 },
+        { "name": "O1", "amplitude": 8, "phase": 84.5 }
+      ]
+    }
+  ],
+  "reaches": [
+    {
+      "id": "APPROACH",
+      "name": "Sea Approach",
+      "chartedDepth": 1600,
+      "length": 9260,
+      "width": 400,
+      "channel": "open",
+      "station": "NARROWS",
+      "surveyed": "2025-01-15T00:00Z",
+      "speedLimit": 140
+    },
+    {
+      "id": "LOWER-BAR",
+      "name": "Lower Bar",
+      "chartedDepth": 1290,
+      "length": 5560,
+      "width": 180,
+      "channel": "restricted",
+      "station": "NARROWS",
+      "surveyed": "2025-01-15T00:00Z",
+      "shoalingRate": 24,
+      "speedLimit": 100
+    },
+    {
+      "id": "UPPER",
+      "name": "Upper Harbour",
+      "chartedDepth": 1400,
+      "length": 3704,
+      "width": 200,
+      "channel": "restricted",
+      "station": "NARROWS",
+      "surveyed": "2025-01-15T00:00Z",
+      "speedLimit": 80
+    }
+  ],
+  "berths": [
+    {
+      "id": "GRAIN-3",
+      "name": "Grain Quay 3",
+      "kind": "quay",
+      "reach": "UPPER",
+      "depth": 1400,
+      "maxLength": 25000,
+      "terminal": "GRAIN"
+    },
+    {
+      "id": "ANCH-A",
+      "name": "Anchorage A",
+      "kind": "anchorage",
+      "reach": "APPROACH",
+      "depth": 2200,
+      "maxLength": 34000
+    }
+  ],
+  "overheads": [
+    {
+      "id": "HARBOUR-BR",
+      "name": "Harbour Bridge",
+      "kind": "bridge",
+      "reach": "UPPER",
+      "clearance": 5400,
+      "station": "NARROWS",
+      "airGap": 100
+    }
+  ]
+}

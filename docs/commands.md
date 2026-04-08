@@ -256,6 +256,10 @@ one account
 
 load accounts from a csv file
 
+### `keelroom init`
+
+build a district file from a json description
+
 ### `keelroom notices`
 
 notices to mariners

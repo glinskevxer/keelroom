@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InternalError } from '../../../src/util/errors';
 import { closeDatabase, openDatabase } from '../../../src/storage/database';
 import { migrate } from '../../../src/storage/migrate';
-import { backupTo, checkDatabase, checkDomain, summarise } from '../../../src/storage/backup';
+import {
+  backupTo,
+  checkDatabase,
+  checkDomain,
+  restoreFrom,
+  summarise,
+} from '../../../src/storage/backup';
 import { saveAccount, saveVessel } from '../../../src/storage/fleet-store';
 import { makeAccount } from '../../../src/domain/billing/account';
 import { makeVessel } from '../../../src/domain/vessel/vessel';
@@ -148,5 +154,60 @@ describe('summarising', () => {
   it('refuses a file that was never migrated', () => {
     temp = temporaryDatabase();
     expect(() => summarise(temp!.db)).toThrow(InternalError);
+  });
+});
+
+describe('restoring', () => {
+  it('puts a backup back and keeps the file it replaced', async () => {
+    const one = ready();
+    scratch = mkdtempSync(join(tmpdir(), 'keelroom-restore-'));
+    const backup = join(scratch, 'copy.sqlite');
+    await backupTo(one.db, backup);
+    const target = join(scratch, 'district.sqlite');
+    writeFileSync(target, 'not a database');
+    const result = restoreFrom(backup, target);
+    expect(result.kept).toBe(`${target}.replaced`);
+    expect(existsSync(result.kept ?? '')).toBe(true);
+    const copy = openDatabase(target, { readonly: true });
+    expect((copy.prepare('select count(*) as n from vessel').get() as { n: number }).n).toBe(1);
+    closeDatabase(copy);
+  });
+
+  it('replaces the file outright when told not to keep it', async () => {
+    const one = ready();
+    scratch = mkdtempSync(join(tmpdir(), 'keelroom-restore-'));
+    const backup = join(scratch, 'copy.sqlite');
+    await backupTo(one.db, backup);
+    const target = join(scratch, 'district.sqlite');
+    writeFileSync(target, 'not a database');
+    const result = restoreFrom(backup, target, { keep: false });
+    expect(result.kept).toBeUndefined();
+    expect(existsSync(`${target}.replaced`)).toBe(false);
+  });
+
+  it('writes the file when there is nothing to replace', async () => {
+    const one = ready();
+    scratch = mkdtempSync(join(tmpdir(), 'keelroom-restore-'));
+    const backup = join(scratch, 'copy.sqlite');
+    await backupTo(one.db, backup);
+    const target = join(scratch, 'fresh.sqlite');
+    expect(restoreFrom(backup, target).kept).toBeUndefined();
+    expect(existsSync(target)).toBe(true);
+  });
+
+  it('refuses a backup that is not there', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'keelroom-restore-'));
+    scratch = directory;
+    expect(() =>
+      restoreFrom(join(directory, 'nothing.sqlite'), join(directory, 'x.sqlite')),
+    ).toThrow(/no backup at that path/);
+  });
+
+  it('refuses a backup that is not a database', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'keelroom-restore-'));
+    scratch = directory;
+    const rubbish = join(directory, 'rubbish.sqlite');
+    writeFileSync(rubbish, 'not a database at all');
+    expect(() => restoreFrom(rubbish, join(directory, 'x.sqlite'))).toThrow();
   });
 });

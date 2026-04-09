@@ -217,6 +217,17 @@ Options:
   - `--from <time>` start of the period
   - `--days <days>` how many days
 
+### `keelroom district restore`
+
+put a backup back, keeping the file it replaces
+
+Options:
+  - `--no-keep` do not keep the file being replaced
+
+### `keelroom district compact`
+
+reclaim the space a long running district leaves behind
+
 ### `keelroom doctor`
 
 check the district file and report anything wrong with it

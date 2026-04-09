@@ -8,11 +8,16 @@
  * backup, it is a fast copy of a broken district.
  */
 
-import { statSync } from 'node:fs';
+import { copyFileSync, existsSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { InternalError } from '../util/errors';
 import type { Db } from './database';
 import { brokenReferences, countRows, integrityProblems, tableExists } from './database';
 import { currentVersion } from './migrate';
+import { openDatabase } from './database';
+
+function openBackup(path: string): Db {
+  return openDatabase(path, { readonly: true });
+}
 
 export interface BackupResult {
   readonly path: string;
@@ -30,6 +35,48 @@ export async function backupTo(db: Db, path: string): Promise<BackupResult> {
     }
   ).n;
   return { path, bytes: stats.size, tables, version: currentVersion(db) };
+}
+
+export interface RestoreResult {
+  readonly from: string;
+  readonly to: string;
+  readonly bytes: number;
+  readonly kept: string | undefined;
+}
+
+/**
+ * Put a backup back. The file being replaced is moved aside first rather than
+ * overwritten, because the commonest reason to restore is that somebody is
+ * already having a bad day and a restore from the wrong backup should not be
+ * the end of the district.
+ */
+export function restoreFrom(
+  source: string,
+  target: string,
+  options: { keep?: boolean } = {},
+): RestoreResult {
+  if (!existsSync(source)) {
+    throw new InternalError('there is no backup at that path', { source });
+  }
+  const check = openBackup(source);
+  try {
+    if (integrityProblems(check).length > 0) {
+      throw new InternalError('the backup does not pass its own integrity check', { source });
+    }
+  } finally {
+    check.close();
+  }
+  let kept: string | undefined;
+  if (existsSync(target)) {
+    if (options.keep === false) {
+      unlinkSync(target);
+    } else {
+      kept = `${target}.replaced`;
+      renameSync(target, kept);
+    }
+  }
+  copyFileSync(source, target);
+  return { from: source, to: target, bytes: statSync(target).size, kept };
 }
 
 export interface Problem {

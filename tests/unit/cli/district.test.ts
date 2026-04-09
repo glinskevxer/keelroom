@@ -161,3 +161,31 @@ describe('the berth diary', () => {
     expect(result.io.text()).toContain('GRAIN-3');
   });
 });
+
+describe('restoring and compacting', () => {
+  it('puts a backup back', async () => {
+    harness = cliHarness();
+    const backup = join(harness.directory, 'copy.sqlite');
+    await harness.invoke('district', 'backup', backup);
+    const result = await harness.invoke('district', 'restore', backup);
+    expect(result.io.text()).toContain('restored from');
+    const after = await harness.invoke('district', 'show');
+    expect(after.io.text()).toContain('Keel Room');
+  });
+
+  it('refuses a backup that is not there', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke(
+      'district',
+      'restore',
+      join(harness.directory, 'nope.sqlite'),
+    );
+    expect(result.io.errorText()).toContain('no backup at that path');
+  });
+
+  it('compacts the file', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('district', 'compact');
+    expect(result.io.text()).toContain('bytes became');
+  });
+});

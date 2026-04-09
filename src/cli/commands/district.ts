@@ -2,7 +2,7 @@
  * keelroom district: the channel itself, and the files that change it.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import type { Command } from 'commander';
 import { formatLocal } from '../../util/clock';
 import { formatMetres } from '../../util/units';
@@ -19,13 +19,17 @@ import { importHarmonics, importSurveys } from '../../service/imports';
 import { buildExport, exportNames } from '../../service/exports';
 import { berthsFor, diaryForDays, utilisation } from '../../service/berths';
 import { readMetres } from '../shared';
-import { backupTo } from '../../storage/backup';
+import { backupTo, restoreFrom } from '../../storage/backup';
+import { compact } from '../../storage/database';
 import { writeFileSync } from 'node:fs';
 import { MINUTES_PER_DAY } from '../../util/clock';
 import { makeInterval } from '../../util/interval';
 import { NotFoundError } from '../../util/errors';
 import { readInteger, readTime } from '../shared';
 import type { Io } from '../output';
+import { emit, readFormat } from '../output';
+import type { GlobalOptions } from '../shared';
+import { loadConfig } from '../shared';
 import { withDistrict } from '../run';
 
 export function registerDistrict(program: Command, io: Io): void {
@@ -285,5 +289,34 @@ export function registerDistrict(program: Command, io: Io): void {
           say(text, found);
         },
       ),
+    );
+
+  district
+    .command('restore <path>')
+    .description('put a backup back, keeping the file it replaces')
+    .option('--no-keep', 'do not keep the file being replaced')
+    .action((path: string, local: { keep?: boolean }) => {
+      const options = program.opts<GlobalOptions>();
+      const config = loadConfig(options);
+      const result = restoreFrom(path, config.databasePath, { keep: local.keep !== false });
+      const text = renderPairs([
+        ['restored from', result.from],
+        ['to', result.to],
+        ['bytes', String(result.bytes)],
+        ['kept the old file at', result.kept ?? 'nowhere, it was replaced'],
+      ]);
+      emit(io, readFormat(options.format), text, result);
+    });
+
+  district
+    .command('compact')
+    .description('reclaim the space a long running district leaves behind')
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
+        const before = statSync(context.config.databasePath).size;
+        compact(context.db);
+        const after = statSync(context.config.databasePath).size;
+        say(`${before} bytes became ${after}`, { before, after });
+      }),
     );
 }

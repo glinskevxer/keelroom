@@ -68,7 +68,7 @@ describe('doctor', () => {
     harness = cliHarness();
     const result = await harness.invoke('doctor');
     expect(result.code).toBe(EXIT_CLEAN);
-    expect(result.io.text()).toContain('nothing wrong');
+    expect(result.io.text()).toContain('the file itself is sound');
     expect(result.io.text()).toContain('vessels');
   });
 
@@ -167,5 +167,44 @@ describe('init', () => {
     const result = await harness.invoke('init', path);
     expect(result.code).toBe(EXIT_USAGE);
     expect(result.io.errorText()).toContain('not valid');
+  });
+});
+
+describe('the doctor looking ahead', () => {
+  it('says nothing wants attention in a fresh district', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('doctor');
+    expect(result.io.text()).toContain('the file itself is sound');
+    expect(result.io.text()).toContain('nothing wants attention');
+  });
+
+  it('reports an order whose time has gone', async () => {
+    harness = cliHarness();
+    await harness.invoke(
+      'orders',
+      'place',
+      '9074705',
+      'SEAWAY',
+      '--kind',
+      'arrival',
+      '--from',
+      'SEA',
+      '--to',
+      'GRAIN-3',
+      '--draught',
+      '6.00',
+      '--at',
+      '2025-04-01T05:00',
+    );
+    const io = recordingIo();
+    await run(['--config', harness.configPath, '--now', '2025-04-01T14:00Z', 'doctor'], { io });
+    expect(io.text()).toContain('HEALTH-LATE');
+  });
+
+  it('carries the health findings in the json', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('--format', 'json', 'doctor');
+    const parsed = JSON.parse(result.io.text()) as { health: unknown[] };
+    expect(Array.isArray(parsed.health)).toBe(true);
   });
 });

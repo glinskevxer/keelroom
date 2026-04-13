@@ -232,6 +232,10 @@ reclaim the space a long running district leaves behind
 
 check the district file and report anything wrong with it
 
+Options:
+  - `--deep` replan the confirmed movements as well, which is slower
+  - `--days <days>` how far ahead to look
+
 ### `keelroom vessels`
 
 the ships the district knows

@@ -13,6 +13,7 @@ import type { Io } from './output';
 import { registerAdvice } from './commands/advice';
 import { registerAudit } from './commands/audit';
 import { registerBilling } from './commands/billing';
+import { registerBulletin } from './commands/bulletin';
 import { registerDispatch } from './commands/dispatch';
 import { registerDistrict } from './commands/district';
 import { registerDoctor } from './commands/doctor';
@@ -57,6 +58,7 @@ export function buildProgram(io: Io): Command {
   registerAdvice(program, io);
   registerAudit(program, io);
   registerBilling(program, io);
+  registerBulletin(program, io);
   registerDispatch(program, io);
   registerDistrict(program, io);
   registerDoctor(program, io);

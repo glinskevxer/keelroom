@@ -124,6 +124,14 @@ what one agent owes and how old it is
 
 the invoices past their due date
 
+### `keelroom bulletin`
+
+the morning page: tide, weather, notices, movements and the board
+
+Options:
+  - `--day <date>` which day, if not today
+  - `--headlines` the two lines that go out by radio
+
 ### `keelroom dispatch`
 
 pilots on and off the ships

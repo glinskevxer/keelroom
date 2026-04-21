@@ -132,3 +132,47 @@ export function planHeadline(result: PlanResult, options: PlanReportOptions): st
     `first ${localTime(first.from, options.offset)} for ${formatDuration(duration(first))}`
   );
 }
+
+/** The clearance certificate, printed for the ship's file. */
+export function renderCertificate(
+  certificate: import('../service/certificate').Certificate,
+  options: PlanReportOptions,
+): string {
+  const head = renderPairs([
+    ['movement', certificate.movement],
+    ['vessel', `${certificate.vesselName} (${certificate.vessel})`],
+    ['draught', `${formatMetres(certificate.draught)} m`],
+    ['planned for', localTime(certificate.startAt, options.offset)],
+    ['weather', certificate.weather],
+    [
+      'least margin',
+      `${formatMetres(certificate.leastMargin)} m on ${certificate.leastMarginReach}`,
+    ],
+  ]);
+  const table = renderTable(
+    [
+      { heading: 'reach' },
+      { heading: 'at' },
+      { heading: 'tide', align: 'right' },
+      { heading: 'planned depth', align: 'right' },
+      { heading: 'squat', align: 'right' },
+      { heading: 'heel', align: 'right' },
+      { heading: 'swell', align: 'right' },
+      { heading: 'required', align: 'right' },
+      { heading: 'margin', align: 'right' },
+    ],
+    certificate.lines.map((line) => [
+      line.reach,
+      localTime(line.at, options.offset),
+      formatMetres(line.tideHeight),
+      formatMetres(line.plannedDepth),
+      formatMetres(line.assessment.allowances.squat),
+      formatMetres(line.assessment.allowances.heel),
+      formatMetres(line.assessment.allowances.wave),
+      formatMetres(line.assessment.requiredClearance),
+      formatMetres(line.assessment.margin),
+    ]),
+    { title: 'the working, reach by reach', empty: 'no reaches' },
+  );
+  return [options.title ?? 'clearance certificate', '', head, '', table].join('\n');
+}

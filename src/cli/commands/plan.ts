@@ -5,7 +5,8 @@
 import type { Command } from 'commander';
 import { makeInterval } from '../../util/interval';
 import { formatLocal } from '../../util/clock';
-import { renderPlan, planHeadline } from '../../report/plan';
+import { renderCertificate, renderPlan, planHeadline } from '../../report/plan';
+import { certificateFor, isClear } from '../../service/certificate';
 import { movementsInWindow } from '../../storage/movement-store';
 import { confirmMovement, planMovement, FAIR_WEATHER } from '../../service/planning';
 import type { Conditions } from '../../service/planning';
@@ -133,6 +134,21 @@ export function registerPlan(program: Command, io: Io): void {
           lines.length === 0 ? 'nothing waiting to be planned' : lines.join('\n'),
           movements.map((movement) => movement.reference),
         );
+      }),
+    );
+
+  plan
+    .command('certificate <reference>')
+    .description('the clearance working for a movement, for the ship file')
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
+        const certificate = certificateFor(context, reference);
+        const text = [
+          renderCertificate(certificate, { offset: context.district.offset }),
+          '',
+          isClear(certificate) ? 'every reach clears' : 'she does not clear every reach',
+        ].join('\n');
+        say(text, certificate);
       }),
     );
 }

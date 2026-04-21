@@ -390,6 +390,10 @@ a headline for every movement that has no planned time yet
 Options:
   - `--days <days>` how far ahead to look
 
+### `keelroom plan certificate`
+
+the clearance working for a movement, for the ship file
+
 ### `keelroom board`
 
 the turn board as it stands

@@ -124,3 +124,24 @@ describe('the sweep', () => {
     expect(result.io.text()).toBe('nothing waiting to be planned');
   });
 });
+
+describe('the certificate', () => {
+  it('prints the working reach by reach', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    await harness.invoke('plan', 'confirm', reference);
+    const result = await harness.invoke('plan', 'certificate', reference);
+    expect(result.code).toBe(EXIT_CLEAN);
+    expect(result.io.text()).toContain('clearance certificate');
+    expect(result.io.text()).toContain('LOWER-BAR');
+    expect(result.io.text()).toContain('least margin');
+    expect(result.io.text()).toContain('every reach clears');
+  });
+
+  it('refuses a movement that has not been planned', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    const result = await harness.invoke('plan', 'certificate', reference);
+    expect(result.io.errorText()).toContain('no planned time to certify');
+  });
+});

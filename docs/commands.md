@@ -132,6 +132,25 @@ Options:
   - `--day <date>` which day, if not today
   - `--headlines` the two lines that go out by radio
 
+### `keelroom config`
+
+the settings the district runs on
+
+### `keelroom config show`
+
+what is actually in force
+
+### `keelroom config template`
+
+write a settings file with the standing values in it
+
+Options:
+  - `--code <code>` the district code to put in it
+
+### `keelroom config check`
+
+read the settings file and say whether it is valid
+
 ### `keelroom dispatch`
 
 pilots on and off the ships

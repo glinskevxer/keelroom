@@ -74,6 +74,7 @@ export function assignPilot(context: Context, request: AssignRequest): AssignRes
   const demand = {
     vessel,
     draught: movement.draught,
+    at: period.from,
     night:
       !isDaylight(context.position, period.from, context.district.offset) ||
       !isDaylight(context.position, period.to, context.district.offset),

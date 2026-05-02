@@ -15,8 +15,9 @@ import { FindingLog } from '../../util/finding';
 import type { Cm } from '../../util/units';
 import type { Vessel } from '../vessel/vessel';
 import { carriesDangerousCargo, pilotageUnits } from '../vessel/vessel';
+import type { Minute } from '../../util/clock';
 import type { Pilot } from './pilot';
-import { hasEndorsement } from './pilot';
+import { hasEndorsement, papersInDate } from './pilot';
 
 export interface JobDemand {
   readonly vessel: Vessel;
@@ -27,6 +28,8 @@ export interface JobDemand {
   readonly berth?: string;
   /** Anything else the district wants signed off for this job. */
   readonly extraEndorsements?: readonly string[];
+  /** When the job runs, which the licence and medical dates are read against. */
+  readonly at?: Minute;
 }
 
 export interface Qualification {
@@ -47,6 +50,15 @@ export function qualifies(pilot: Pilot, demand: JobDemand): Qualification {
 
   if (!pilot.active) {
     log.block('PIL-OFF-06', 'the pilot is not on the active list', { subject: pilot.id });
+  }
+  if (demand.at !== undefined && !papersInDate(pilot, demand.at)) {
+    log.block('PIL-PAPER-09', 'the licence or the medical has run out', {
+      subject: pilot.id,
+      detail: {
+        licence: pilot.licenceExpires ?? 0,
+        medical: pilot.medicalExpires ?? 0,
+      },
+    });
   }
   if (demand.draught > pilot.limits.draught) {
     log.block('PIL-DEEP-01', 'the ship is deeper than the licence allows', {

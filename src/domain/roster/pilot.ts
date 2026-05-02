@@ -10,6 +10,8 @@
  */
 
 import { InputError } from '../../util/errors';
+import type { Minute } from '../../util/clock';
+import { MINUTES_PER_DAY } from '../../util/clock';
 import type { Cm } from '../../util/units';
 import { assertCm } from '../../util/units';
 
@@ -39,6 +41,10 @@ export interface Pilot {
   /** Limits from the licence, which may be tighter than the grade allows. */
   readonly limits: LicenceLimits;
   readonly active: boolean;
+  /** When the licence itself runs out, if the district records it. */
+  readonly licenceExpires: Minute | undefined;
+  /** When the medical certificate runs out. */
+  readonly medicalExpires: Minute | undefined;
 }
 
 const PILOT_ID = /^P[0-9]{2,4}$/;
@@ -52,6 +58,8 @@ export function makePilot(input: {
   endorsements?: readonly string[];
   limits?: Partial<LicenceLimits>;
   active?: boolean;
+  licenceExpires?: Minute;
+  medicalExpires?: Minute;
 }): Pilot {
   if (!PILOT_ID.test(input.id)) {
     throw new InputError(`pilot id must look like P07, got ${JSON.stringify(input.id)}`);
@@ -89,6 +97,8 @@ export function makePilot(input: {
     endorsements: [...new Set(endorsements)].sort(),
     limits: { draught, units },
     active: input.active ?? true,
+    licenceExpires: input.licenceExpires,
+    medicalExpires: input.medicalExpires,
   };
 }
 
@@ -131,4 +141,31 @@ export function describePilot(pilot: Pilot): string {
 /** Most senior first, which is the order the board is drawn up in. */
 export function bySeniority(pilots: readonly Pilot[]): Pilot[] {
   return [...pilots].sort((a, b) => a.seniority - b.seniority || a.id.localeCompare(b.id));
+}
+
+/** Whether every paper the pilot holds is still in date at a moment. */
+export function papersInDate(pilot: Pilot, at: Minute): boolean {
+  return (
+    (pilot.licenceExpires === undefined || pilot.licenceExpires >= at) &&
+    (pilot.medicalExpires === undefined || pilot.medicalExpires >= at)
+  );
+}
+
+/** The papers that run out inside the days given, soonest first. */
+export function expiringPapers(
+  pilots: readonly Pilot[],
+  at: Minute,
+  withinDays = 60,
+): { pilot: string; paper: 'licence' | 'medical'; expires: Minute }[] {
+  const horizon = at + withinDays * MINUTES_PER_DAY;
+  const found: { pilot: string; paper: 'licence' | 'medical'; expires: Minute }[] = [];
+  for (const pilot of pilots) {
+    if (pilot.licenceExpires !== undefined && pilot.licenceExpires <= horizon) {
+      found.push({ pilot: pilot.id, paper: 'licence', expires: pilot.licenceExpires });
+    }
+    if (pilot.medicalExpires !== undefined && pilot.medicalExpires <= horizon) {
+      found.push({ pilot: pilot.id, paper: 'medical', expires: pilot.medicalExpires });
+    }
+  }
+  return found.sort((a, b) => a.expires - b.expires || a.pilot.localeCompare(b.pilot));
 }

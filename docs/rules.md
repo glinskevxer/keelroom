@@ -32,6 +32,7 @@ Every finding this system raises carries one of these ids.
 | `PIL-EXTRA-07` | blocking | the job wants an endorsement the pilot does not hold | `src/domain/roster/qualification.ts` |
 | `PIL-NIGHT-03` | blocking | the job runs into the dark and the pilot has no night sign off | `src/domain/roster/qualification.ts` |
 | `PIL-OFF-06` | blocking | the pilot is not on the active list | `src/domain/roster/qualification.ts` |
+| `PIL-PAPER-09` | blocking | the licence or the medical has run out | `src/domain/roster/qualification.ts` |
 | `PIL-TIGHT-08` | advice | the job is within thirty centimetres of the licence limit | `src/domain/roster/qualification.ts` |
 | `PIL-UNITS-02` | blocking | the ship is bigger than the licence allows | `src/domain/roster/qualification.ts` |
 | `PLAN-DARK-01` | blocking | every tidal window on this passage falls in the dark | `src/domain/window/plan.ts` |
@@ -58,4 +59,4 @@ Every finding this system raises carries one of these ids.
 | `WIN-DEEP-01` | blocking | no height of tide takes this ship over the reach | `src/domain/window/sweep.ts` |
 | `WIN-NONE-02` | blocking | the tide does not reach what the reach needs inside the range | `src/domain/window/sweep.ts` |
 
-51 rules.
+52 rules.

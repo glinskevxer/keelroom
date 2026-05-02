@@ -18,6 +18,7 @@ import { movementsInWindow } from '../storage/movement-store';
 import { bookingsInPeriod } from '../storage/tug-store';
 import { loadBoard } from '../storage/roster-store';
 import { activePilots } from '../storage/roster-store';
+import { expiringPapers } from '../domain/roster/pilot';
 import { diaryForDays } from './berths';
 import { planMovement } from './planning';
 import type { Context } from './context';
@@ -169,6 +170,18 @@ export function checkDistrict(context: Context, options: HealthOptions = {}): He
         detail: 'on the active roster and not on the board',
       });
     }
+  }
+
+  for (const paper of expiringPapers(activePilots(context.db), now, 60)) {
+    findings.push({
+      check: 'HEALTH-PAPERS',
+      severity: paper.expires < now ? 'warning' : 'note',
+      subject: paper.pilot,
+      detail:
+        paper.expires < now
+          ? `the ${paper.paper} has run out`
+          : `the ${paper.paper} runs out inside two months`,
+    });
   }
 
   return findings.sort(

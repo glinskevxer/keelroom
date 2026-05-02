@@ -167,3 +167,27 @@ describe('what it notices', () => {
     expect(warningsOnly(findings).every((finding) => finding.severity === 'warning')).toBe(true);
   });
 });
+
+describe('the papers', () => {
+  it('are noticed before they run out', () => {
+    harness = testContext();
+    harness.temp.db
+      .prepare('update pilot set medical_expires = ? where id = ?')
+      .run(NOW + 10 * MINUTES_PER_DAY, 'P02');
+    const findings = checkDistrict(harness.context);
+    const paper = findings.find((finding) => finding.check === 'HEALTH-PAPERS');
+    expect(paper?.severity).toBe('note');
+    expect(paper?.detail).toContain('runs out');
+  });
+
+  it('are a warning once they have', () => {
+    harness = testContext();
+    harness.temp.db
+      .prepare('update pilot set licence_expires = ? where id = ?')
+      .run(NOW - MINUTES_PER_DAY, 'P07');
+    const findings = checkDistrict(harness.context);
+    const paper = findings.find((finding) => finding.check === 'HEALTH-PAPERS');
+    expect(paper?.severity).toBe('warning');
+    expect(paper?.detail).toContain('has run out');
+  });
+});

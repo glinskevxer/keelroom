@@ -27,6 +27,8 @@ interface PilotRow {
   draught_limit_cm: number;
   unit_limit: number;
   active: number;
+  licence_expires: number | null;
+  medical_expires: number | null;
 }
 
 interface DutyRow {
@@ -61,6 +63,8 @@ function toPilot(row: PilotRow, endorsements: readonly string[]): Pilot {
     endorsements,
     limits: { draught: row.draught_limit_cm, units: row.unit_limit },
     active: row.active === 1,
+    ...(row.licence_expires === null ? {} : { licenceExpires: row.licence_expires }),
+    ...(row.medical_expires === null ? {} : { medicalExpires: row.medical_expires }),
   });
 }
 
@@ -68,15 +72,18 @@ export function savePilot(db: Db, pilot: Pilot, grantedAt: Minute = 0): void {
   inTransaction(db, (inner) => {
     inner
       .prepare(
-        `insert into pilot (id, name, grade, seniority, draught_limit_cm, unit_limit, active)
-         values (?, ?, ?, ?, ?, ?, ?)
+        `insert into pilot (id, name, grade, seniority, draught_limit_cm, unit_limit, active,
+          licence_expires, medical_expires)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?)
          on conflict(id) do update set
            name = excluded.name,
            grade = excluded.grade,
            seniority = excluded.seniority,
            draught_limit_cm = excluded.draught_limit_cm,
            unit_limit = excluded.unit_limit,
-           active = excluded.active`,
+           active = excluded.active,
+           licence_expires = excluded.licence_expires,
+           medical_expires = excluded.medical_expires`,
       )
       .run(
         pilot.id,
@@ -86,6 +93,8 @@ export function savePilot(db: Db, pilot: Pilot, grantedAt: Minute = 0): void {
         pilot.limits.draught,
         pilot.limits.units,
         pilot.active ? 1 : 0,
+        pilot.licenceExpires ?? null,
+        pilot.medicalExpires ?? null,
       );
     inner.prepare('delete from pilot_endorsement where pilot = ?').run(pilot.id);
     const endorsement = inner.prepare(

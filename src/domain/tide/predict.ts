@@ -37,10 +37,36 @@ export interface PreparedStation {
 }
 
 /**
+ * Preparing a station costs an astronomical calculation per term, and the sweep
+ * asks for the same station at the same reference minute over and over: once per
+ * reach, per candidate draught, per bisection step. The cache is keyed on the
+ * station object itself, so a station loaded again or edited is a different key
+ * and nothing stale can be read back.
+ */
+const prepared = new WeakMap<TideStation, Map<Minute, PreparedStation>>();
+
+/** How many minutes of reference time share one preparation. */
+const BUCKET = 60;
+
+/**
  * Fix the node factors at a reference minute and fold the fitted lag in. Every
  * height after that is arithmetic.
  */
 export function prepare(station: TideStation, reference: Minute): PreparedStation {
+  const bucket = Math.round(reference / BUCKET) * BUCKET;
+  const held = prepared.get(station) ?? new Map<Minute, PreparedStation>();
+  const found = held.get(bucket);
+  if (found !== undefined) {
+    return found;
+  }
+  const built = prepareAt(station, bucket);
+  held.set(bucket, built);
+  prepared.set(station, held);
+  return built;
+}
+
+/** Prepare without the cache, which is what the cache calls and what tests use. */
+export function prepareAt(station: TideStation, reference: Minute): PreparedStation {
   const state: NodeState = nodeStateAt(reference);
   const terms = station.terms.map((term) => {
     const constituent = requireConstituent(term.name);

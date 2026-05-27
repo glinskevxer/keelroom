@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildProgram } from '../../../src/cli/program';
 import { recordingIo } from '../../../src/cli/output';
+import { run } from '../../../src/cli/program';
 
 const reference = readFileSync(join(__dirname, '..', '..', '..', 'docs', 'commands.md'), 'utf8');
 
@@ -79,5 +80,24 @@ describe('the generated reference', () => {
   it('lists the options that appear on every command', () => {
     expect(reference).toContain('--district <code>');
     expect(reference).toContain('--format <format>');
+  });
+});
+
+describe('the help text', () => {
+  it('shows the ordinary day in the order it happens', async () => {
+    const io = recordingIo();
+    await run(['--help'], { io });
+    const text = io.text();
+    expect(text).toContain('The ordinary day');
+    expect(text.indexOf('orders place')).toBeLessThan(text.indexOf('plan confirm'));
+    expect(text.indexOf('plan confirm')).toBeLessThan(text.indexOf('dispatch assign'));
+    expect(text.indexOf('dispatch assign')).toBeLessThan(text.indexOf('billing raise'));
+  });
+
+  it('names the pages read every morning', async () => {
+    const io = recordingIo();
+    await run(['--help'], { io });
+    expect(io.text()).toContain('keelroom bulletin');
+    expect(io.text()).toContain('keelroom doctor');
   });
 });

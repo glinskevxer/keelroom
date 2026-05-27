@@ -51,6 +51,26 @@ export function buildProgram(io: Io): Command {
     .option('--operator <name>', 'who is at the terminal, for the audit trail')
     .option('-f, --format <format>', 'text or json', 'text')
     .showHelpAfterError()
+    .addHelpText(
+      'after',
+      [
+        '',
+        'The ordinary day, in the order it happens:',
+        '  keelroom orders place <imo> <agent> --kind arrival --from SEA --to GRAIN-3 \\',
+        '      --draught 11.20 --at 2025-04-03T06:00',
+        '  keelroom plan show M-2025-0001        what the tide allows and why',
+        '  keelroom plan confirm M-2025-0001     take one of the windows',
+        '  keelroom dispatch assign M-2025-0001  the board picks the pilot',
+        '  keelroom tugs book M-2025-0001        raise the towage',
+        '  keelroom dispatch boarded|underway|complete M-2025-0001',
+        '  keelroom billing raise SEAWAY         one invoice for the period',
+        '',
+        'And the pages that get read every morning:',
+        '  keelroom bulletin                     tide, weather, notices, movements',
+        '  keelroom board                        whose turn it is',
+        '  keelroom doctor                       anything wrong or about to be',
+      ].join('\n'),
+    )
     .exitOverride();
   program.configureOutput({
     writeOut: (text) => io.write(text.trimEnd()),

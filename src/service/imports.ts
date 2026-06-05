@@ -23,6 +23,9 @@ import { makeAccount } from '../domain/billing/account';
 import type { Account } from '../domain/billing/account';
 import { isKnownConstituent } from '../domain/tide/constituent';
 import { saveAccount, saveVessel } from '../storage/fleet-store';
+import type { MovementKind } from '../domain/movement/movement';
+import type { Context } from './context';
+import { placeOrder } from './ordering';
 
 export interface ImportSummary {
   readonly read: number;
@@ -204,4 +207,60 @@ export function importSurveys(db: Db, text: string, source = 'surveys.csv'): Imp
     return count;
   });
   return { read: updates.length, written, kind: 'survey' };
+}
+
+const KINDS: MovementKind[] = ['arrival', 'departure', 'shift', 'anchorage', 'swing'];
+
+export interface OrderRow {
+  readonly vessel: string;
+  readonly agent: string;
+  readonly kind: MovementKind;
+  readonly from: string;
+  readonly to: string;
+  readonly draught: number;
+  readonly requestedFor: string;
+  readonly note?: string;
+}
+
+export function readOrders(text: string, source = 'orders.csv'): OrderRow[] {
+  const table = parseCsv(text, { source });
+  return table.rows.map((row) => ({
+    vessel: row.get('imo'),
+    agent: row.get('agent'),
+    kind: requireEnum(row, 'kind', KINDS),
+    from: row.get('from'),
+    to: row.get('to'),
+    draught: requireInteger(row, 'draught_cm'),
+    requestedFor: row.get('requested_for'),
+    ...(row.optional('note') === undefined ? {} : { note: row.optional('note') ?? '' }),
+  }));
+}
+
+export interface OrderImport extends ImportSummary {
+  readonly references: readonly string[];
+}
+
+/**
+ * Take a file of orders from an agent. The desk's checks run on every row, so a
+ * file with one bad order writes none of them: an agent sending a week of liner
+ * calls would rather fix the file than work out which four of the seven landed.
+ */
+export function importOrders(context: Context, text: string, source = 'orders.csv'): OrderImport {
+  const orders = readOrders(text, source);
+  const references = inTransaction(context.db, () =>
+    orders.map(
+      (order) =>
+        placeOrder(context, {
+          kind: order.kind,
+          vessel: order.vessel,
+          agent: order.agent,
+          from: order.from,
+          to: order.to,
+          draught: order.draught,
+          requestedFor: parseInstant(order.requestedFor),
+          ...(order.note === undefined ? {} : { notes: [order.note] }),
+        }).movement.reference,
+    ),
+  );
+  return { read: orders.length, written: references.length, kind: 'order', references };
 }

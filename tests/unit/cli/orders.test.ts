@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { EXIT_CLEAN, EXIT_FINDINGS, EXIT_USAGE } from '../../../src/util/errors';
 import { cliHarness } from '../../support/cli';
 import type { CliHarness } from '../../support/cli';
@@ -181,5 +183,37 @@ describe('changing an order', () => {
     await harness.invoke('orders', 'refuse', reference, 'no', 'window');
     const shown = await harness.invoke('orders', 'show', reference);
     expect(shown.io.text()).toContain('status       refused');
+  });
+});
+
+describe('importing a file of orders', () => {
+  it('takes them all and prints the references', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'orders.csv');
+    writeFileSync(
+      path,
+      `imo,agent,kind,from,to,draught_cm,requested_for,note
+9074729,SEAWAY,arrival,SEA,GRAIN-3,1100,2025-04-03T06:00Z,grain
+9074705,SEAWAY,arrival,SEA,GRAIN-3,600,2025-04-05T06:00Z,
+`,
+    );
+    const result = await harness.invoke('orders', 'import', path);
+    expect(result.code).toBe(EXIT_CLEAN);
+    expect(result.io.text()).toContain('took 2 orders');
+    const listed = await harness.invoke('orders', 'list', '--days', '10');
+    expect(listed.io.text()).toContain('M-2025-0002');
+  });
+
+  it('refuses the file when one row is bad', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'orders.csv');
+    writeFileSync(
+      path,
+      `imo,agent,kind,from,to,draught_cm,requested_for
+9074729,SEAWAY,arrival,SEA,NOWHERE,1100,2025-04-03T06:00Z
+`,
+    );
+    const result = await harness.invoke('orders', 'import', path);
+    expect(result.io.errorText()).toContain('no such berth');
   });
 });

@@ -20,6 +20,8 @@ import {
 } from '../../storage/movement-store';
 import { allVessels } from '../../storage/fleet-store';
 import { amendOrder, cancelOrder, placeOrder, refuseOrder } from '../../service/ordering';
+import { importOrders } from '../../service/imports';
+import { readFileSync } from 'node:fs';
 import type { Context } from '../../service/context';
 import type { Io } from '../output';
 import { withDistrict } from '../run';
@@ -205,6 +207,16 @@ export function registerOrders(program: Command, io: Io): void {
       withDistrict(program, io, ({ context, say }, reference: string, reason: string[]) => {
         const movement = refuseOrder(context, reference, reason.join(' '));
         say(`refused ${movement.reference}`, movement);
+      }),
+    );
+
+  orders
+    .command('import <path>')
+    .description('take a file of orders from an agent, all or nothing')
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
+        const summary = importOrders(context, readFileSync(path, 'utf8'), path);
+        say(`took ${summary.written} orders: ${summary.references.join(', ')}`, summary);
       }),
     );
 }

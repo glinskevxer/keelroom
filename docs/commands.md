@@ -377,6 +377,10 @@ cancel an order
 
 refuse an order the district cannot take
 
+### `keelroom orders import`
+
+take a file of orders from an agent, all or nothing
+
 ### `keelroom plan`
 
 transit windows

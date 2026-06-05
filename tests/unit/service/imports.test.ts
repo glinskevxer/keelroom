@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { allVessels, findVessel, findAccount } from '../../../src/storage/fleet-store';
 import { loadDistrict } from '../../../src/storage/district-store';
+import { findMovement } from '../../../src/storage/movement-store';
 import {
   importAccounts,
+  importOrders,
+  readOrders,
   importHarmonics,
   importSurveys,
   importVessels,
@@ -185,5 +188,43 @@ LOWER-BAR,1265,2025-03-20T00:00Z,15
       (each) => each.id === 'LOWER-BAR',
     )!;
     expect(reach.chartedDepth).toBe(1290);
+  });
+});
+
+describe('orders', () => {
+  const ORDERS = `imo,agent,kind,from,to,draught_cm,requested_for,note
+9074729,SEAWAY,arrival,SEA,GRAIN-3,1100,2025-04-03T06:00Z,grain for the mill
+9074705,SEAWAY,arrival,SEA,GRAIN-3,600,2025-04-05T06:00Z,
+`;
+
+  it('read every row', () => {
+    const rows = readOrders(ORDERS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.kind).toBe('arrival');
+    expect(rows[0]?.note).toBe('grain for the mill');
+    expect(rows[1]?.note).toBeUndefined();
+  });
+
+  it('take a week of calls and give back the references', () => {
+    harness = testContext();
+    const summary = importOrders(harness.context, ORDERS);
+    expect(summary.written).toBe(2);
+    expect(summary.references[0]).toBe('M-2025-0001');
+    expect(findMovement(harness.temp.db, 'M-2025-0002')?.vessel).toBe('9074705');
+  });
+
+  it('refuse the whole file when one order is refused', () => {
+    harness = testContext();
+    const bad = `${ORDERS}9074729,SEAWAY,arrival,SEA,NOWHERE,1100,2025-04-07T06:00Z,\n`;
+    expect(() => importOrders(harness!.context, bad)).toThrow(/no such berth/);
+    expect(findMovement(harness.temp.db, 'M-2025-0001')).toBeUndefined();
+  });
+
+  it('refuse a kind nobody orders', () => {
+    expect(() =>
+      readOrders(
+        'imo,agent,kind,from,to,draught_cm,requested_for\n9074729,SEAWAY,towage,SEA,GRAIN-3,1100,2025-04-03T06:00Z\n',
+      ),
+    ).toThrow(/expected one of/);
   });
 });

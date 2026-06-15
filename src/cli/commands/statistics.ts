@@ -8,6 +8,7 @@ import { makeInterval } from '../../util/interval';
 import { renderReturn, returnHeadline } from '../../report/statistics';
 import { comparePeriods, districtReturn } from '../../service/statistics';
 import type { Io } from '../output';
+import { readPeriod } from '../period';
 import { withDistrict } from '../run';
 import { readInteger, readTime } from '../shared';
 
@@ -26,12 +27,7 @@ export function registerStatistics(program: Command, io: Io): void {
         io,
         ({ context, say }, local: { from?: string; days: string; headline?: boolean }) => {
           const offset = context.district.offset;
-          const days = readInteger(local.days, 'days');
-          const from =
-            local.from === undefined
-              ? context.now() - days * MINUTES_PER_DAY
-              : readTime(local.from, offset);
-          const period = makeInterval(from, from + days * MINUTES_PER_DAY);
+          const period = readPeriod(context, local, { days: 30, backwards: true });
           const result = districtReturn(context, period);
           const text =
             local.headline === true ? returnHeadline(result) : renderReturn(result, { offset });

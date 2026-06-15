@@ -5,9 +5,10 @@
 import type { Command } from 'commander';
 import { formatLocal, localTime } from '../../util/clock';
 import { renderTable } from '../../util/table';
-import { checkAgainstTraffic, firstClearStart, trafficDay } from '../../service/traffic';
+import { checkAgainstTraffic, firstClearStart, trafficFor } from '../../service/traffic';
 import { requireMovement } from '../../storage/movement-store';
 import type { Io } from '../output';
+import { readPeriod } from '../period';
 import { withDistrict } from '../run';
 import { readInteger, readTime } from '../shared';
 
@@ -22,8 +23,8 @@ export function registerTraffic(program: Command, io: Io): void {
     .action(
       withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
         const offset = context.district.offset;
-        const from = local.from === undefined ? context.now() : readTime(local.from, offset);
-        const day = trafficDay(context, from, readInteger(local.days, 'days'));
+        const period = readPeriod(context, local, { days: 1 });
+        const day = trafficFor(context, period);
         const occupancy = renderTable(
           [
             { heading: 'reach' },

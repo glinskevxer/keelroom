@@ -8,6 +8,7 @@ import { renderTable } from '../../util/table';
 import { beaufort, makeObservation, readingAt } from '../../domain/weather/observation';
 import { saveObservation, weatherBetween } from '../../storage/weather-store';
 import type { Io } from '../output';
+import { readPeriod } from '../period';
 import { withDistrict } from '../run';
 import { readInteger, readMetres, readTime } from '../shared';
 
@@ -66,10 +67,8 @@ export function registerWeather(program: Command, io: Io): void {
     .action(
       withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
         const offset = context.district.offset;
-        const from =
-          local.from === undefined ? context.now() - MINUTES_PER_DAY : readTime(local.from, offset);
-        const to = from + readInteger(local.days, 'days') * MINUTES_PER_DAY;
-        const log = weatherBetween(context.db, from, to);
+        const period = readPeriod(context, local, { days: 1, backwards: true });
+        const log = weatherBetween(context.db, period.from, period.to);
         const text = renderTable(
           [
             { heading: 'when' },

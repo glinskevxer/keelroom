@@ -17,19 +17,17 @@ import { isStale, plannedDepth, surveyAgeDays } from '../../domain/chart/reach';
 import { renderStationSummary } from '../../report/tide';
 import { importHarmonics, importSurveys } from '../../service/imports';
 import { buildExport, exportNames } from '../../service/exports';
-import { berthsFor, diaryForDays, utilisation } from '../../service/berths';
+import { berthsFor, diaryFor, utilisation } from '../../service/berths';
 import { readMetres } from '../shared';
 import { backupTo, restoreFrom } from '../../storage/backup';
 import { compact } from '../../storage/database';
 import { writeFileSync } from 'node:fs';
-import { MINUTES_PER_DAY } from '../../util/clock';
-import { makeInterval } from '../../util/interval';
 import { NotFoundError } from '../../util/errors';
-import { readInteger, readTime } from '../shared';
 import type { Io } from '../output';
 import { emit, readFormat } from '../output';
 import type { GlobalOptions } from '../shared';
 import { loadConfig } from '../shared';
+import { readPeriod } from '../period';
 import { withDistrict } from '../run';
 
 export function registerDistrict(program: Command, io: Io): void {
@@ -184,13 +182,7 @@ export function registerDistrict(program: Command, io: Io): void {
           if (chosen === undefined) {
             throw new NotFoundError('export', name);
           }
-          const offset = context.district.offset;
-          const days = readInteger(local.days, 'days');
-          const from =
-            local.from === undefined
-              ? context.now() - days * MINUTES_PER_DAY
-              : readTime(local.from, offset);
-          const period = makeInterval(from, from + days * MINUTES_PER_DAY);
+          const period = readPeriod(context, local, { days: 30, backwards: true });
           const result = buildExport(context, chosen, period);
           if (local.toFile !== undefined) {
             writeFileSync(local.toFile, result.csv);
@@ -213,8 +205,8 @@ export function registerDistrict(program: Command, io: Io): void {
     .action(
       withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
         const offset = context.district.offset;
-        const from = local.from === undefined ? context.now() : readTime(local.from, offset);
-        const diary = diaryForDays(context, from, readInteger(local.days, 'days'));
+        const period = readPeriod(context, local, { days: 7 });
+        const diary = diaryFor(context, period);
         const stays = renderTable(
           [
             { heading: 'berth' },
@@ -260,12 +252,7 @@ export function registerDistrict(program: Command, io: Io): void {
           draught: string,
           local: { from?: string; days: string },
         ) => {
-          const offset = context.district.offset;
-          const from = local.from === undefined ? context.now() : readTime(local.from, offset);
-          const period = makeInterval(
-            from,
-            from + readInteger(local.days, 'days') * MINUTES_PER_DAY,
-          );
+          const period = readPeriod(context, local, { days: 2 });
           const found = berthsFor(context, {
             vessel,
             draught: readMetres(draught, 'draught'),

@@ -10,11 +10,10 @@ import { makeTug } from '../../domain/tug/tug';
 import { byOwner, fleetPull } from '../../domain/tug/tug';
 import { allTugs, bookingsInPeriod, saveTug } from '../../storage/tug-store';
 import { bookForMovement, heldBy, offerTugs, releaseForMovement } from '../../service/towage';
-import { makeInterval } from '../../util/interval';
-import { MINUTES_PER_DAY } from '../../util/clock';
 import type { Io } from '../output';
+import { readPeriod } from '../period';
 import { withDistrict } from '../run';
-import { readInteger, readTime } from '../shared';
+import { readInteger } from '../shared';
 
 export function registerTugs(program: Command, io: Io): void {
   const tugs = program.command('tugs').description('the towage fleet');
@@ -134,8 +133,7 @@ export function registerTugs(program: Command, io: Io): void {
     .action(
       withDistrict(program, io, ({ context, say }, local: { from?: string; days: string }) => {
         const offset = context.district.offset;
-        const from = local.from === undefined ? context.now() : readTime(local.from, offset);
-        const period = makeInterval(from, from + readInteger(local.days, 'days') * MINUTES_PER_DAY);
+        const period = readPeriod(context, local, { days: 1 });
         const bookings = bookingsInPeriod(context.db, period);
         const text = renderTable(
           [{ heading: 'tug' }, { heading: 'movement' }, { heading: 'from' }, { heading: 'to' }],

@@ -531,6 +531,27 @@ Options:
   - `--hours <hours>` how many hours to plot
   - `--step <minutes>` minutes between samples
 
+### `keelroom tides secondary`
+
+the secondary ports and their corrections
+
+### `keelroom tides add-secondary`
+
+record a secondary port as corrections to a standard one
+
+Options:
+  - `--hw-factor <thousandths>` height factor at high water
+  - `--lw-factor <thousandths>` height factor at low water
+  - `--datum <centimetres>` shift for a different datum
+
+### `keelroom tides secondary-table`
+
+high and low water at a secondary port
+
+Options:
+  - `--from <time>` start of the range
+  - `--days <days>` how many days to print
+
 ### `keelroom traffic`
 
 the channel, reach by reach

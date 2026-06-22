@@ -381,6 +381,20 @@ refuse an order the district cannot take
 
 take a file of orders from an agent, all or nothing
 
+### `keelroom orders declare`
+
+declare what she is carrying, class one of 1, 2, 3, 4, 5, 6, 7, 8, 9, none
+
+Options:
+  - `--un <number>` the un number
+  - `--tonnes <tonnes>` how much of it
+  - `--ballast` she is in ballast
+  - `--note <text>` anything else
+
+### `keelroom orders declaration`
+
+what she declared
+
 ### `keelroom plan`
 
 transit windows

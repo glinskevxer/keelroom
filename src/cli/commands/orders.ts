@@ -21,11 +21,13 @@ import {
 import { allVessels } from '../../storage/fleet-store';
 import { amendOrder, cancelOrder, placeOrder, refuseOrder } from '../../service/ordering';
 import { importOrders } from '../../service/imports';
+import { hazardClasses, makeDeclaration, describeDeclaration } from '../../domain/vessel/cargo';
+import { findDeclaration, requireMovement, saveDeclaration } from '../../storage/movement-store';
 import { readFileSync } from 'node:fs';
 import type { Context } from '../../service/context';
 import type { Io } from '../output';
 import { withDistrict } from '../run';
-import { readMetres, readTime } from '../shared';
+import { readInteger, readMetres, readTime } from '../shared';
 
 const KINDS: MovementKind[] = ['arrival', 'departure', 'shift', 'anchorage', 'swing'];
 
@@ -217,6 +219,53 @@ export function registerOrders(program: Command, io: Io): void {
       withDistrict(program, io, ({ context, say }, path: string) => {
         const summary = importOrders(context, readFileSync(path, 'utf8'), path);
         say(`took ${summary.written} orders: ${summary.references.join(', ')}`, summary);
+      }),
+    );
+
+  orders
+    .command('declare <reference> <hazard>')
+    .description(`declare what she is carrying, class one of ${hazardClasses().join(', ')}`)
+    .option('--un <number>', 'the un number')
+    .option('--tonnes <tonnes>', 'how much of it', '0')
+    .option('--ballast', 'she is in ballast')
+    .option('--note <text>', 'anything else')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          reference: string,
+          hazard: string,
+          local: { un?: string; tonnes: string; ballast?: boolean; note?: string },
+        ) => {
+          requireMovement(context.db, reference);
+          const declaration = makeDeclaration({
+            movement: reference,
+            hazard,
+            ...(local.un === undefined ? {} : { unNumber: local.un }),
+            tonnes: readInteger(local.tonnes, 'tonnes'),
+            inBallast: local.ballast === true,
+            ...(local.note === undefined ? {} : { note: local.note }),
+          });
+          saveDeclaration(context.db, declaration);
+          say(describeDeclaration(declaration), declaration);
+        },
+      ),
+    );
+
+  orders
+    .command('declaration <reference>')
+    .description('what she declared')
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
+        const declaration = findDeclaration(context.db, reference);
+        say(
+          declaration === undefined
+            ? `${reference} has declared nothing`
+            : describeDeclaration(declaration),
+          declaration ?? null,
+        );
       }),
     );
 }

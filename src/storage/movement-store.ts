@@ -15,6 +15,8 @@ import type { Movement, MovementKind, MovementStatus } from '../domain/movement/
 import { makeMovement } from '../domain/movement/movement';
 import type { Delay, DelayCause, MovementTimes } from '../domain/movement/times';
 import { makeDelay } from '../domain/movement/times';
+import type { CargoDeclaration } from '../domain/vessel/cargo';
+import { makeDeclaration } from '../domain/vessel/cargo';
 
 interface MovementRow {
   reference: string;
@@ -239,8 +241,55 @@ export function findTimes(db: Db, reference: string): MovementTimes | undefined 
   };
 }
 
+interface CargoRow {
+  movement: string;
+  hazard: string;
+  un_number: string | null;
+  tonnes: number;
+  in_ballast: number;
+  note: string | null;
+}
+
+export function saveDeclaration(db: Db, declaration: CargoDeclaration): void {
+  db.prepare(
+    `insert into movement_cargo (movement, hazard, un_number, tonnes, in_ballast, note)
+     values (?, ?, ?, ?, ?, ?)
+     on conflict(movement) do update set
+       hazard = excluded.hazard,
+       un_number = excluded.un_number,
+       tonnes = excluded.tonnes,
+       in_ballast = excluded.in_ballast,
+       note = excluded.note`,
+  ).run(
+    declaration.movement,
+    declaration.hazard,
+    declaration.unNumber ?? null,
+    declaration.tonnes,
+    declaration.inBallast ? 1 : 0,
+    declaration.note ?? null,
+  );
+}
+
+export function findDeclaration(db: Db, reference: string): CargoDeclaration | undefined {
+  const row = db.prepare('select * from movement_cargo where movement = ?').get(reference) as
+    | CargoRow
+    | undefined;
+  if (row === undefined) {
+    return undefined;
+  }
+  return makeDeclaration({
+    movement: row.movement,
+    hazard: row.hazard,
+    ...(row.un_number === null ? {} : { unNumber: row.un_number }),
+    tonnes: row.tonnes,
+    inBallast: row.in_ballast === 1,
+    ...(row.note === null ? {} : { note: row.note }),
+  });
+}
+
 export function deleteMovement(db: Db, reference: string): boolean {
   return inTransaction(db, (inner) => {
+    inner.prepare('delete from movement_cargo where movement = ?').run(reference);
     inner.prepare('delete from movement_delay where movement = ?').run(reference);
     inner.prepare('delete from movement_time where movement = ?').run(reference);
     inner.prepare('delete from movement_note where movement = ?').run(reference);

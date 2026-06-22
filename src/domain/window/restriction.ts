@@ -14,6 +14,8 @@ import { InputError } from '../../util/errors';
 import type { Cm } from '../../util/units';
 import type { Vessel } from '../vessel/vessel';
 import { carriesDangerousCargo, pilotageUnits, sizeClass } from '../vessel/vessel';
+import type { CargoDeclaration } from '../vessel/cargo';
+import { extraTugs, forcesDaylight as cargoForcesDaylight } from '../vessel/cargo';
 import type { Passage } from '../chart/passage';
 
 export interface RestrictionRules {
@@ -55,6 +57,8 @@ export interface MovementConditions {
   readonly masterRequestsDaylight?: boolean;
   /** Whether the ship is under her own power. */
   readonly deadShip?: boolean;
+  /** What she declared she is carrying, where a declaration was made. */
+  readonly cargo?: CargoDeclaration;
 }
 
 export interface Restrictions {
@@ -75,6 +79,7 @@ export function tugsRequired(
   if (carriesDangerousCargo(vessel)) {
     tugs += 1;
   }
+  tugs += extraTugs(conditions.cargo);
   if (conditions.deadShip === true) {
     tugs += 2;
   }
@@ -125,6 +130,10 @@ export function assessRestrictions(input: {
   if (conditions.deadShip === true) {
     daylightReasons.push('RES-DAY-04');
     log.note('RES-DAY-04', 'a dead ship tow is daylight only');
+  }
+  if (cargoForcesDaylight(conditions.cargo)) {
+    daylightReasons.push('RES-DAY-09');
+    log.note('RES-DAY-09', 'class one cargo moves in daylight whatever her size');
   }
 
   if (conditions.wind >= rules.windCeiling) {

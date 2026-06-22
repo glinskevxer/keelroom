@@ -217,3 +217,52 @@ describe('importing a file of orders', () => {
     expect(result.io.errorText()).toContain('no such berth');
   });
 });
+
+describe('declaring the cargo', () => {
+  it('records what she is carrying', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    const result = await harness.invoke(
+      'orders',
+      'declare',
+      reference,
+      '3',
+      '--un',
+      '1203',
+      '--tonnes',
+      '4000',
+    );
+    expect(result.code).toBe(EXIT_CLEAN);
+    expect(result.io.text()).toContain('class 3 un 1203');
+    const shown = await harness.invoke('orders', 'declaration', reference);
+    expect(shown.io.text()).toContain('4000 t');
+  });
+
+  it('says when nothing has been declared', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    const result = await harness.invoke('orders', 'declaration', reference);
+    expect(result.io.text()).toContain('has declared nothing');
+  });
+
+  it('refuses a class the form does not carry', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    const result = await harness.invoke('orders', 'declare', reference, '12');
+    expect(result.io.errorText()).toContain('not a hazard class');
+  });
+
+  it('refuses a declaration against a movement nobody has', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('orders', 'declare', 'M-2025-9999', '3');
+    expect(result.code).toBe(EXIT_FINDINGS);
+  });
+
+  it('shows up in the plan as a daylight reason', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    await harness.invoke('orders', 'declare', reference, '1', '--tonnes', '20');
+    const plan = await harness.invoke('plan', 'show', reference);
+    expect(plan.io.text()).toContain('RES-DAY-09');
+  });
+});

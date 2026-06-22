@@ -42,6 +42,7 @@ Every finding this system raises carries one of these ids.
 | `RES-DAY-02` | note | over the daylight draught for the district | `src/domain/window/restriction.ts` |
 | `RES-DAY-03` | note | the master has asked for daylight | `src/domain/window/restriction.ts` |
 | `RES-DAY-04` | note | a dead ship tow is daylight only | `src/domain/window/restriction.ts` |
+| `RES-DAY-09` | note | class one cargo moves in daylight whatever her size | `src/domain/window/restriction.ts` |
 | `RES-TUG-07` | blocking | the movement wants more tugs than the district has | `src/domain/window/restriction.ts` |
 | `RES-TUG-08` | advice | a ship this size is being planned without a tug | `src/domain/window/restriction.ts` |
 | `RES-VIS-06` | blocking | the visibility is under the floor for any movement | `src/domain/window/restriction.ts` |
@@ -59,4 +60,4 @@ Every finding this system raises carries one of these ids.
 | `WIN-DEEP-01` | blocking | no height of tide takes this ship over the reach | `src/domain/window/sweep.ts` |
 | `WIN-NONE-02` | blocking | the tide does not reach what the reach needs inside the range | `src/domain/window/sweep.ts` |
 
-52 rules.
+53 rules.

@@ -34,7 +34,7 @@ import { noticesInPeriod } from '../storage/notice-store';
 import { requireVessel } from '../storage/fleet-store';
 import { weatherAround } from '../storage/weather-store';
 import { readingAt } from '../domain/weather/observation';
-import { requireMovement, saveMovement } from '../storage/movement-store';
+import { findDeclaration, requireMovement, saveMovement } from '../storage/movement-store';
 import type { Context } from './context';
 import { note } from './audit';
 
@@ -131,6 +131,7 @@ export function planMovement(context: Context, request: PlanRequest): MovementPl
   const movement = requireMovement(context.db, request.reference);
   const vessel = requireVessel(context.db, movement.vessel);
   const bounds = request.bounds ?? windowAround(movement.requestedFor, request.searchHours ?? 12);
+  const declaration = findDeclaration(context.db, movement.reference);
   const fromLog = conditionsFromLog(context, movement.plannedFor ?? movement.requestedFor);
   const conditions = request.conditions ?? fromLog.conditions;
   const weather = request.conditions === undefined ? fromLog.source : 'given';
@@ -157,6 +158,7 @@ export function planMovement(context: Context, request: PlanRequest): MovementPl
     movement: {
       ...conditions.movement,
       ...(effects.daylightOnly ? { masterRequestsDaylight: true } : {}),
+      ...(declaration === undefined ? {} : { cargo: declaration }),
     },
     position: context.position,
     rules: context.config.restrictions,

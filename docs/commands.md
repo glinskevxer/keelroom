@@ -298,6 +298,23 @@ one account
 
 load accounts from a csv file
 
+### `keelroom agents contact`
+
+record somebody to ring, role one of operations, accounts, master, emergency
+
+Options:
+  - `--email <address>` their address
+  - `--telephone <number>` their number
+  - `--no-notices` they do not want the notices
+
+### `keelroom agents contacts`
+
+the people behind an agent code, or behind all of them
+
+### `keelroom agents notice-list`
+
+the addresses a notice goes out to
+
 ### `keelroom init`
 
 build a district file from a json description

@@ -12,6 +12,8 @@ import { NotFoundError } from '../util/errors';
 import type { Db } from './database';
 import type { Account } from '../domain/billing/account';
 import { makeAccount } from '../domain/billing/account';
+import type { Contact } from '../domain/billing/contact';
+import { makeContact } from '../domain/billing/contact';
 import type { Vessel, VesselType } from '../domain/vessel/vessel';
 import { makeVessel } from '../domain/vessel/vessel';
 
@@ -172,4 +174,62 @@ export function allAccounts(db: Db): Account[] {
 
 export function stoppedAccounts(db: Db): Account[] {
   return allAccounts(db).filter((account) => account.stopped);
+}
+
+interface ContactRow {
+  agent: string;
+  name: string;
+  role: string;
+  email: string | null;
+  telephone: string | null;
+  takes_notices: number;
+}
+
+function toContact(row: ContactRow): Contact {
+  return makeContact({
+    agent: row.agent,
+    name: row.name,
+    role: row.role,
+    ...(row.email === null ? {} : { email: row.email }),
+    ...(row.telephone === null ? {} : { telephone: row.telephone }),
+    takesNotices: row.takes_notices === 1,
+  });
+}
+
+export function saveContact(db: Db, contact: Contact): void {
+  db.prepare(
+    `insert into contact (agent, name, role, email, telephone, takes_notices)
+     values (?, ?, ?, ?, ?, ?)
+     on conflict(agent, name, role) do update set
+       email = excluded.email,
+       telephone = excluded.telephone,
+       takes_notices = excluded.takes_notices`,
+  ).run(
+    contact.agent,
+    contact.name,
+    contact.role,
+    contact.email ?? null,
+    contact.telephone ?? null,
+    contact.takesNotices ? 1 : 0,
+  );
+}
+
+export function allContacts(db: Db): Contact[] {
+  const rows = db.prepare('select * from contact order by agent, role, name').all() as ContactRow[];
+  return rows.map(toContact);
+}
+
+export function contactsForAgent(db: Db, agent: string): Contact[] {
+  const rows = db
+    .prepare('select * from contact where agent = ? order by role, name')
+    .all(agent) as ContactRow[];
+  return rows.map(toContact);
+}
+
+export function deleteContact(db: Db, agent: string, name: string, role: string): boolean {
+  return (
+    db
+      .prepare('delete from contact where agent = ? and name = ? and role = ?')
+      .run(agent, name, role).changes > 0
+  );
 }

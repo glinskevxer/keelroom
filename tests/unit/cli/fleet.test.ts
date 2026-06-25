@@ -108,3 +108,78 @@ describe('agents', () => {
     expect(after.io.text()).toContain('45 day terms');
   });
 });
+
+describe('contacts', () => {
+  it('record somebody to ring', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke(
+      'agents',
+      'contact',
+      'SEAWAY',
+      'J Hall',
+      'operations',
+      '--email',
+      'hall@seaway.example',
+    );
+    expect(result.code).toBe(EXIT_CLEAN);
+    expect(result.io.text()).toContain('takes notices');
+  });
+
+  it('list them', async () => {
+    harness = cliHarness();
+    await harness.invoke(
+      'agents',
+      'contact',
+      'SEAWAY',
+      'J Hall',
+      'operations',
+      '--email',
+      'hall@seaway.example',
+    );
+    await harness.invoke(
+      'agents',
+      'contact',
+      'NORTH',
+      'C Watt',
+      'emergency',
+      '--telephone',
+      '+1 902 555 0100',
+    );
+    const result = await harness.invoke('agents', 'contacts');
+    expect(result.io.text()).toContain('J Hall');
+    expect(result.io.text()).toContain('+1 902 555 0100');
+    const mine = await harness.invoke('agents', 'contacts', 'NORTH');
+    expect(mine.io.text()).not.toContain('J Hall');
+  });
+
+  it('build the notice list', async () => {
+    harness = cliHarness();
+    const empty = await harness.invoke('agents', 'notice-list');
+    expect(empty.io.text()).toBe('nobody takes the notices');
+    await harness.invoke(
+      'agents',
+      'contact',
+      'SEAWAY',
+      'J Hall',
+      'operations',
+      '--email',
+      'hall@seaway.example',
+    );
+    const result = await harness.invoke('agents', 'notice-list');
+    expect(result.io.text()).toBe('hall@seaway.example');
+  });
+
+  it('refuse an agent nobody has', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke(
+      'agents',
+      'contact',
+      'NOBODY',
+      'J Hall',
+      'operations',
+      '--email',
+      'x@y.example',
+    );
+    expect(result.code).toBe(EXIT_FINDINGS);
+  });
+});

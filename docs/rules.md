@@ -22,6 +22,7 @@ Every finding this system raises carries one of these ids.
 | `NOT-SPEED-05` | note | a notice caps the speed through this reach | `src/domain/notice/apply.ts` |
 | `ORD-ACCT-01` | blocking | the account cannot take another movement | `src/service/ordering.ts` |
 | `ORD-DEEP-04` | blocking | the declared draught is deeper than her summer marks | `src/service/ordering.ts` |
+| `ORD-DEP-07` | blocking | the account works on deposit and has nothing lodged | `src/service/ordering.ts` |
 | `ORD-LENGTH-03` | blocking | the ship is longer than the berth takes | `src/service/ordering.ts` |
 | `ORD-PAST-05` | blocking | the time asked for has already gone | `src/service/ordering.ts` |
 | `ORD-PLACE-02` | blocking | the district has no such berth | `src/service/ordering.ts` |
@@ -60,4 +61,4 @@ Every finding this system raises carries one of these ids.
 | `WIN-DEEP-01` | blocking | no height of tide takes this ship over the reach | `src/domain/window/sweep.ts` |
 | `WIN-NONE-02` | blocking | the tide does not reach what the reach needs inside the range | `src/domain/window/sweep.ts` |
 
-53 rules.
+54 rules.

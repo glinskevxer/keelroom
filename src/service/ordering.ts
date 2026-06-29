@@ -20,6 +20,8 @@ import type { Movement, MovementKind } from '../domain/movement/movement';
 import { makeMovement, nextReference } from '../domain/movement/movement';
 import { apply } from '../domain/movement/lifecycle';
 import { standing } from '../domain/billing/account';
+import { heldFor } from '../domain/billing/deposit';
+import { depositsFor, drawsFor } from '../storage/deposit-store';
 import { balanceFor } from '../domain/billing/ledger';
 import { requireVessel, findAccount } from '../storage/fleet-store';
 import { invoicesForAgent, creditsForAgent, allocationsFor } from '../storage/billing-store';
@@ -60,6 +62,18 @@ export function placeOrder(context: Context, request: OrderRequest): OrderResult
     allocationsFor(context.db, request.agent),
   );
   const where = standing(account, owed);
+  if (account.requiresDeposit) {
+    const held = heldFor(
+      account.agent,
+      depositsFor(context.db, account.agent),
+      drawsFor(context.db, account.agent),
+    );
+    if (held <= 0) {
+      log.block('ORD-DEP-07', 'the account works on deposit and has nothing lodged', {
+        subject: account.agent,
+      });
+    }
+  }
   if (!where.canOrder) {
     log.block('ORD-ACCT-01', 'the account cannot take another movement', {
       subject: request.agent,

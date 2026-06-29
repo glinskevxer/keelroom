@@ -21,6 +21,8 @@ import type { Invoice, InvoiceItem } from '../domain/billing/invoice';
 import { makeInvoice, nextInvoiceNumber } from '../domain/billing/invoice';
 import { dueDate } from '../domain/billing/account';
 import { requireAccount, requireVessel } from '../storage/fleet-store';
+import { drawDown } from '../domain/billing/deposit';
+import { depositsFor, drawsFor, recordDraws } from '../storage/deposit-store';
 import { allBooks, invoiceNumbersIssuedIn, saveInvoice } from '../storage/billing-store';
 import {
   findTimes,
@@ -138,6 +140,34 @@ export function raiseInvoice(context: Context, request: InvoiceRequest): Invoice
 }
 
 /** What one movement would cost, without writing anything. */
+export interface DrawResult {
+  readonly drawn: Cents;
+  readonly short: Cents;
+}
+
+/**
+ * Run a movement's charge down against whatever the agent has lodged, and say
+ * what is left to invoice. A movement that a deposit covers in full is still
+ * invoiced; the invoice simply reads as paid the moment it is issued.
+ */
+export function drawFromDeposits(context: Context, reference: string): DrawResult {
+  const movement = requireMovement(context.db, reference);
+  const assessment = quoteMovement(context, reference);
+  const result = drawDown({
+    agent: movement.agent,
+    movement: reference,
+    amount: assessment.total,
+    at: context.now(),
+    deposits: depositsFor(context.db, movement.agent),
+    draws: drawsFor(context.db, movement.agent),
+  });
+  recordDraws(context.db, result.draws);
+  return {
+    drawn: result.draws.reduce((total, draw) => total + draw.amount, 0),
+    short: result.short,
+  };
+}
+
 export function quoteMovement(context: Context, reference: string): Assessment {
   const movement = requireMovement(context.db, reference);
   const vessel = requireVessel(context.db, movement.vessel);

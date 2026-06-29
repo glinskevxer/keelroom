@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { EXIT_CLEAN, EXIT_FINDINGS, EXIT_USAGE } from '../../../src/util/errors';
+import { openDatabase } from '../../../src/storage/database';
 import { cliHarness } from '../../support/cli';
 import type { CliHarness } from '../../support/cli';
 
@@ -158,5 +159,74 @@ describe('what is owed', () => {
     await harness.invoke('billing', 'issue', number);
     const result = await harness.invoke('billing', 'overdue', 'SEAWAY');
     expect(result.io.text()).toContain('nothing overdue');
+  });
+});
+
+describe('deposits', () => {
+  it('lodge money and show what is held', async () => {
+    harness = cliHarness();
+    const lodged = await harness.invoke('billing', 'deposit', 'NORTH', 'DEP-001', '500000');
+    expect(lodged.io.text()).toContain('5,000.00 held for NORTH');
+    const shown = await harness.invoke('billing', 'deposits', 'NORTH');
+    expect(shown.io.text()).toContain('DEP-001');
+    expect(shown.io.text()).toContain('NORTH holds 5,000.00');
+  });
+
+  it('say when nothing is lodged', async () => {
+    harness = cliHarness();
+    const result = await harness.invoke('billing', 'deposits', 'SEAWAY');
+    expect(result.io.text()).toContain('nothing lodged');
+  });
+
+  it('draw a movement charge down against them', async () => {
+    harness = cliHarness();
+    const reference = await ranMovement();
+    await harness.invoke('billing', 'deposit', 'SEAWAY', 'DEP-002', '20000');
+    const result = await harness.invoke('billing', 'draw', reference);
+    expect(result.io.text()).toContain('200.00 drawn');
+    expect(result.io.text()).toContain('left to invoice');
+  });
+
+  it('refuse an order from an agent who works on deposit and has lodged nothing', async () => {
+    harness = cliHarness();
+    const database = harness.databasePath;
+    const db = openDatabase(database);
+    db.prepare('update account set requires_deposit = 1 where agent = ?').run('NORTH');
+    db.close();
+    const refused = await harness.invoke(
+      'orders',
+      'place',
+      '9074705',
+      'NORTH',
+      '--kind',
+      'arrival',
+      '--from',
+      'SEA',
+      '--to',
+      'GRAIN-3',
+      '--draught',
+      '6.00',
+      '--at',
+      '2025-04-03T06:00',
+    );
+    expect(refused.io.errorText()).toContain('works on deposit');
+    await harness.invoke('billing', 'deposit', 'NORTH', 'DEP-009', '500000');
+    const taken = await harness.invoke(
+      'orders',
+      'place',
+      '9074705',
+      'NORTH',
+      '--kind',
+      'arrival',
+      '--from',
+      'SEA',
+      '--to',
+      'GRAIN-3',
+      '--draught',
+      '6.00',
+      '--at',
+      '2025-04-03T06:00',
+    );
+    expect(taken.io.text()).toContain('taken as');
   });
 });

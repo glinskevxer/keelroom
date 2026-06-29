@@ -124,6 +124,22 @@ what one agent owes and how old it is
 
 the invoices past their due date
 
+### `keelroom billing deposit`
+
+lodge money before a movement runs
+
+Options:
+  - `--movement <reference>` the movement it is lodged against
+  - `--note <text>` anything to record with it
+
+### `keelroom billing deposits`
+
+what an agent has lodged and what is left of it
+
+### `keelroom billing draw`
+
+run a movement charge down against what the agent has lodged
+
 ### `keelroom bulletin`
 
 the morning page: tide, weather, notices, movements and the board

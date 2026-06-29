@@ -10,7 +10,14 @@ import { formatMoney } from '../../util/units';
 import { renderTable } from '../../util/table';
 import { renderInvoice, renderOverdue, renderStatement } from '../../report/money';
 import { findInvoice, invoicesForAgent } from '../../storage/billing-store';
-import { priceMovement, quoteMovement, raiseInvoice } from '../../service/settlement';
+import {
+  drawFromDeposits,
+  priceMovement,
+  quoteMovement,
+  raiseInvoice,
+} from '../../service/settlement';
+import { makeDeposit, heldFor, refundable } from '../../domain/billing/deposit';
+import { depositsFor, drawsFor, saveDeposit } from '../../storage/deposit-store';
 import { creditInvoice, issueInvoice, statementFor, takePayment } from '../../service/collections';
 import type { CreditReason } from '../../domain/billing/credit';
 import type { Io } from '../output';
@@ -191,6 +198,82 @@ export function registerBilling(program: Command, io: Io): void {
         say(
           renderOverdue(invoices, context.now()),
           invoices.map((invoice) => invoice.number),
+        );
+      }),
+    );
+
+  billing
+    .command('deposit <agent> <reference> <amount>')
+    .description('lodge money before a movement runs')
+    .option('--movement <reference>', 'the movement it is lodged against')
+    .option('--note <text>', 'anything to record with it')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          agent: string,
+          reference: string,
+          amount: string,
+          local: { movement?: string; note?: string },
+        ) => {
+          const deposit = makeDeposit({
+            reference,
+            agent,
+            amount: readInteger(amount, 'amount'),
+            lodgedAt: context.now(),
+            ...(local.movement === undefined ? {} : { movement: local.movement }),
+            ...(local.note === undefined ? {} : { note: local.note }),
+          });
+          saveDeposit(context.db, deposit);
+          say(
+            `${deposit.reference} lodged, ${formatMoney(deposit.amount, { grouped: true })} held for ${agent}`,
+            deposit,
+          );
+        },
+      ),
+    );
+
+  billing
+    .command('deposits <agent>')
+    .description('what an agent has lodged and what is left of it')
+    .action(
+      withDistrict(program, io, ({ context, say }, agent: string) => {
+        const deposits = depositsFor(context.db, agent);
+        const draws = drawsFor(context.db, agent);
+        const text = renderTable(
+          [
+            { heading: 'deposit' },
+            { heading: 'lodged', align: 'right' },
+            { heading: 'left', align: 'right' },
+            { heading: 'movement' },
+          ],
+          deposits.map((deposit) => [
+            deposit.reference,
+            formatMoney(deposit.amount, { grouped: true }),
+            formatMoney(refundable(agent, [deposit], draws)[0]?.amount ?? 0, { grouped: true }),
+            deposit.movement ?? '',
+          ]),
+          {
+            title: `${agent} holds ${formatMoney(heldFor(agent, deposits, draws), { grouped: true })}`,
+            empty: 'nothing lodged',
+          },
+        );
+        say(text, { deposits, draws });
+      }),
+    );
+
+  billing
+    .command('draw <reference>')
+    .description('run a movement charge down against what the agent has lodged')
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
+        const result = drawFromDeposits(context, reference);
+        say(
+          `${formatMoney(result.drawn, { grouped: true })} drawn, ` +
+            `${formatMoney(result.short, { grouped: true })} left to invoice`,
+          result,
         );
       }),
     );

@@ -140,6 +140,18 @@ what an agent has lodged and what is left of it
 
 run a movement charge down against what the agent has lodged
 
+### `keelroom billing dispute`
+
+record a dispute, ground one of not-our-movement, wrong-rate, wrong-units, detention-not-ours, already-paid, other
+
+### `keelroom billing settle`
+
+answer a dispute: upheld, rejected or withdrawn
+
+### `keelroom billing disputes`
+
+what an agent has taken issue with
+
 ### `keelroom bulletin`
 
 the morning page: tide, weather, notices, movements and the board

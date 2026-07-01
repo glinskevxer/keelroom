@@ -91,6 +91,7 @@ export function renderStatement(statement: AgentStatement, options: MoneyOptions
   const head = renderPairs([
     ['agent', statement.agent],
     ['balance', formatMoney(statement.balance, { grouped: true })],
+    ['under dispute', formatMoney(statement.disputed, { grouped: true })],
     ['standing', statement.standing.reason],
     ['may order', statement.standing.canOrder ? 'yes' : 'no'],
   ]);

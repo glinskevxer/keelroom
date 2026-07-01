@@ -18,6 +18,8 @@ import { makeInvoice } from '../domain/billing/invoice';
 import type { CreditNote, CreditReason } from '../domain/billing/credit';
 import type { Allocation, Payment } from '../domain/billing/ledger';
 import { makePayment } from '../domain/billing/ledger';
+import type { Dispute } from '../domain/billing/dispute';
+import { raiseDispute, settle } from '../domain/billing/dispute';
 
 interface BookRow {
   id: string;
@@ -323,6 +325,83 @@ export function paymentsForAgent(db: Db, agent: string): Payment[] {
       receivedAt: row.received_at,
     }),
   );
+}
+
+interface DisputeRow {
+  invoice: string;
+  agent: string;
+  ground: string;
+  amount: number;
+  raised_at: number;
+  note: string;
+  outcome: string;
+  settled_at: number | null;
+  answer: string | null;
+}
+
+function toDispute(row: DisputeRow): Dispute {
+  const raised = raiseDispute({
+    invoice: row.invoice,
+    agent: row.agent,
+    ground: row.ground,
+    amount: row.amount,
+    raisedAt: row.raised_at,
+    note: row.note,
+  });
+  if (row.outcome === 'open') {
+    return raised;
+  }
+  return settle(
+    raised,
+    row.outcome as 'upheld' | 'rejected' | 'withdrawn',
+    row.settled_at ?? row.raised_at,
+    row.answer ?? 'settled',
+  );
+}
+
+export function saveDispute(db: Db, dispute: Dispute): void {
+  db.prepare(
+    `insert into dispute (invoice, agent, ground, amount, raised_at, note, outcome, settled_at, answer)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     on conflict(invoice, raised_at) do update set
+       ground = excluded.ground,
+       amount = excluded.amount,
+       note = excluded.note,
+       outcome = excluded.outcome,
+       settled_at = excluded.settled_at,
+       answer = excluded.answer`,
+  ).run(
+    dispute.invoice,
+    dispute.agent,
+    dispute.ground,
+    dispute.amount,
+    dispute.raisedAt,
+    dispute.note,
+    dispute.outcome,
+    dispute.settledAt ?? null,
+    dispute.answer ?? null,
+  );
+}
+
+export function disputesForAgent(db: Db, agent: string): Dispute[] {
+  const rows = db
+    .prepare('select * from dispute where agent = ? order by raised_at, invoice')
+    .all(agent) as DisputeRow[];
+  return rows.map(toDispute);
+}
+
+export function disputesOnInvoice(db: Db, invoice: string): Dispute[] {
+  const rows = db
+    .prepare('select * from dispute where invoice = ? order by raised_at')
+    .all(invoice) as DisputeRow[];
+  return rows.map(toDispute);
+}
+
+export function allDisputes(db: Db): Dispute[] {
+  const rows = db
+    .prepare('select * from dispute order by raised_at, invoice')
+    .all() as DisputeRow[];
+  return rows.map(toDispute);
 }
 
 export function allocationsFor(db: Db, agent: string): Allocation[] {

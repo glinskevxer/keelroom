@@ -12,6 +12,7 @@ import { up as secondary } from './010-secondary';
 import { up as cargo } from './011-cargo';
 import { up as contacts } from './012-contacts';
 import { up as deposits } from './013-deposits';
+import { up as disputes } from './014-disputes';
 
 export interface Migration {
   readonly id: number;
@@ -39,4 +40,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 11, name: 'cargo', up: cargo },
   { id: 12, name: 'contacts', up: contacts },
   { id: 13, name: 'deposits', up: deposits },
+  { id: 14, name: 'disputes', up: disputes },
 ];

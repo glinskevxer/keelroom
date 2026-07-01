@@ -78,21 +78,23 @@ describe('a statement', () => {
     const statement = {
       agent: 'SEAWAY',
       balance: 100000,
+      disputed: 0,
       ageing: ageing('SEAWAY', invoices, RAISED + 40 * DAY),
       standing: standing(makeAccount({ agent: 'SEAWAY', name: 'Seaway' }), 100000),
       open: [{ invoice: 'INV-2025-00042', raisedAt: RAISED, owed: 100000 }],
     };
     const text = renderStatement(statement, OPTIONS);
-    expect(text).toContain('balance    1,000.00');
+    expect(text).toContain('balance        1,000.00');
     expect(text).toContain('open invoices');
     expect(text).toContain('ageing');
-    expect(text).toContain('may order  yes');
+    expect(text).toContain('may order      yes');
   });
 
   it('says so when nothing is outstanding', () => {
     const statement = {
       agent: 'NORTH',
       balance: 0,
+      disputed: 0,
       ageing: ageing('NORTH', [], RAISED),
       standing: standing(makeAccount({ agent: 'NORTH', name: 'Northern' }), 0),
       open: [],

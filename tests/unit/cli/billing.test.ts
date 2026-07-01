@@ -230,3 +230,86 @@ describe('deposits', () => {
     expect(taken.io.text()).toContain('taken as');
   });
 });
+
+describe('disputes', () => {
+  it('record what the agent says and stop the chasing', async () => {
+    harness = cliHarness();
+    const number = await invoiced();
+    await harness.invoke('billing', 'issue', number);
+    const result = await harness.invoke(
+      'billing',
+      'dispute',
+      number,
+      'wrong-rate',
+      '5000',
+      'charged',
+      'on',
+      'the',
+      'wrong',
+      'band',
+    );
+    expect(result.io.text()).toContain('wrong-rate (open)');
+    const statement = await harness.invoke('billing', 'statement', 'SEAWAY');
+    expect(statement.io.text()).toContain('under dispute  50.00');
+  });
+
+  it('answer one and put the invoice back', async () => {
+    harness = cliHarness();
+    const number = await invoiced();
+    await harness.invoke('billing', 'issue', number);
+    await harness.invoke(
+      'billing',
+      'dispute',
+      number,
+      'wrong-units',
+      '5000',
+      'her',
+      'units',
+      'are',
+      'wrong',
+    );
+    const settled = await harness.invoke(
+      'billing',
+      'settle',
+      number,
+      'rejected',
+      'the',
+      'units',
+      'are',
+      'right',
+    );
+    expect(settled.io.text()).toContain('rejected');
+    const shown = await harness.invoke('billing', 'show', number);
+    expect(shown.io.text()).toContain('issued');
+  });
+
+  it('refuse an outcome nobody records', async () => {
+    harness = cliHarness();
+    const number = await invoiced();
+    await harness.invoke('billing', 'issue', number);
+    await harness.invoke('billing', 'dispute', number, 'other', '5000', 'we', 'are', 'unhappy');
+    const result = await harness.invoke('billing', 'settle', number, 'maybe', 'we', 'will', 'see');
+    expect(result.io.errorText()).toContain('no dispute outcome');
+  });
+
+  it('list what an agent has taken issue with', async () => {
+    harness = cliHarness();
+    const empty = await harness.invoke('billing', 'disputes', 'SEAWAY');
+    expect(empty.io.text()).toContain('nothing disputed');
+    const number = await invoiced();
+    await harness.invoke('billing', 'issue', number);
+    await harness.invoke(
+      'billing',
+      'dispute',
+      number,
+      'already-paid',
+      '5000',
+      'we',
+      'paid',
+      'this',
+      'already',
+    );
+    const result = await harness.invoke('billing', 'disputes', 'SEAWAY');
+    expect(result.io.text()).toContain('already-paid');
+  });
+});

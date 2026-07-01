@@ -22,12 +22,17 @@ import { requireAccount } from '../storage/fleet-store';
 import {
   allocationsFor,
   creditsForAgent,
+  disputesForAgent,
+  disputesOnInvoice,
   findInvoice,
   invoicesForAgent,
   saveCredit,
+  saveDispute,
   savePayment,
   setInvoiceStatus,
 } from '../storage/billing-store';
+import type { Dispute, DisputeOutcome } from '../domain/billing/dispute';
+import { disputedOn, isOpen, raiseDispute, settle } from '../domain/billing/dispute';
 import type { Context } from './context';
 import { localYear } from './context';
 import { note } from './audit';
@@ -138,9 +143,58 @@ export function creditInvoice(context: Context, request: CreditRequest): CreditN
   return credit;
 }
 
+export interface DisputeRequest {
+  readonly invoice: string;
+  readonly ground: string;
+  readonly amount: Cents;
+  readonly note: string;
+  readonly raisedAt?: Minute;
+}
+
+/** Record what the agent says is wrong, and stop chasing that much of it. */
+export function disputeInvoice(context: Context, request: DisputeRequest): Dispute {
+  const invoice = findInvoice(context.db, request.invoice);
+  if (invoice === undefined) {
+    throw new InputError(`there is no invoice ${request.invoice}`);
+  }
+  const dispute = raiseDispute({
+    invoice: invoice.number,
+    agent: invoice.agent,
+    ground: request.ground,
+    amount: request.amount,
+    raisedAt: request.raisedAt ?? context.now(),
+    note: request.note,
+  });
+  saveDispute(context.db, dispute);
+  setInvoiceStatus(context.db, invoice.number, 'disputed');
+  return dispute;
+}
+
+/** Answer one, which puts the invoice back on the chasing list. */
+export function settleDispute(
+  context: Context,
+  invoice: string,
+  outcome: Exclude<DisputeOutcome, 'open'>,
+  answer: string,
+): Dispute {
+  const open = disputesOnInvoice(context.db, invoice).find(isOpen);
+  if (open === undefined) {
+    throw new InputError(`there is no open dispute on ${invoice}`);
+  }
+  const settled = settle(open, outcome, context.now(), answer);
+  saveDispute(context.db, settled);
+  const held = findInvoice(context.db, invoice);
+  if (held !== undefined && held.status === 'disputed') {
+    setInvoiceStatus(context.db, invoice, 'issued');
+  }
+  return settled;
+}
+
 export interface AgentStatement {
   readonly agent: string;
   readonly balance: Cents;
+  /** What is under dispute, which the chasing leaves alone. */
+  readonly disputed: Cents;
   readonly ageing: AgeingBuckets;
   readonly standing: Standing;
   readonly open: readonly { invoice: string; raisedAt: Minute; owed: Cents }[];
@@ -154,9 +208,11 @@ export function statementFor(context: Context, agent: string, at?: Minute): Agen
   const credits = creditsForAgent(context.db, agent);
   const allocations = allocationsFor(context.db, agent);
   const balance = balanceFor(agent, invoices, credits, allocations);
+  const disputes = disputesForAgent(context.db, agent);
   return {
     agent,
     balance,
+    disputed: invoices.reduce((total, invoice) => total + disputedOn(disputes, invoice.number), 0),
     ageing: ageing(agent, invoices, when, credits, allocations),
     standing: standing(account, balance),
     open: invoices

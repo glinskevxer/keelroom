@@ -18,7 +18,16 @@ import {
 } from '../../service/settlement';
 import { makeDeposit, heldFor, refundable } from '../../domain/billing/deposit';
 import { depositsFor, drawsFor, saveDeposit } from '../../storage/deposit-store';
-import { creditInvoice, issueInvoice, statementFor, takePayment } from '../../service/collections';
+import {
+  creditInvoice,
+  disputeInvoice,
+  issueInvoice,
+  settleDispute,
+  statementFor,
+  takePayment,
+} from '../../service/collections';
+import { describeDispute, disputeGrounds } from '../../domain/billing/dispute';
+import { disputesForAgent } from '../../storage/billing-store';
 import type { CreditReason } from '../../domain/billing/credit';
 import type { Io } from '../output';
 import { withDistrict } from '../run';
@@ -275,6 +284,69 @@ export function registerBilling(program: Command, io: Io): void {
             `${formatMoney(result.short, { grouped: true })} left to invoice`,
           result,
         );
+      }),
+    );
+
+  billing
+    .command('dispute <number> <ground> <amount> <note...>')
+    .description(`record a dispute, ground one of ${disputeGrounds().join(', ')}`)
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, number: string, ground: string, amount: string, note: string[]) => {
+          const dispute = disputeInvoice(context, {
+            invoice: number,
+            ground,
+            amount: readInteger(amount, 'amount'),
+            note: note.join(' '),
+          });
+          say(describeDispute(dispute), dispute);
+        },
+      ),
+    );
+
+  billing
+    .command('settle <number> <outcome> <answer...>')
+    .description('answer a dispute: upheld, rejected or withdrawn')
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, number: string, outcome: string, answer: string[]) => {
+          if (outcome !== 'upheld' && outcome !== 'rejected' && outcome !== 'withdrawn') {
+            throw new NotFoundError('dispute outcome', outcome);
+          }
+          const settled = settleDispute(context, number, outcome, answer.join(' '));
+          say(describeDispute(settled), settled);
+        },
+      ),
+    );
+
+  billing
+    .command('disputes <agent>')
+    .description('what an agent has taken issue with')
+    .action(
+      withDistrict(program, io, ({ context, say }, agent: string) => {
+        const disputes = disputesForAgent(context.db, agent);
+        const text = renderTable(
+          [
+            { heading: 'invoice' },
+            { heading: 'ground' },
+            { heading: 'amount', align: 'right' },
+            { heading: 'outcome' },
+            { heading: 'note', width: 36 },
+          ],
+          disputes.map((dispute) => [
+            dispute.invoice,
+            dispute.ground,
+            formatMoney(dispute.amount, { grouped: true }),
+            dispute.outcome,
+            dispute.note,
+          ]),
+          { title: `${agent} disputes`, empty: 'nothing disputed' },
+        );
+        say(text, disputes);
       }),
     );
 }

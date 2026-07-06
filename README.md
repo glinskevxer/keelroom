@@ -67,6 +67,7 @@ keelroom --database district.sqlite tides table NARROWS --days 2
 | `src/domain/traffic` | who is in which reach, and where ships meet |
 | `src/domain/tug` | the towage fleet and its bookings |
 | `src/domain/weather` | the observation log |
+| `src/domain/boat` | the boarding grounds and the launches |
 | `src/domain/berth` | who is lying where, worked out from the movements |
 | `src/domain/audit` | the trail of decisions people argue about later |
 | `src/domain/statistics` | the numbers the district reports on itself |

@@ -8,11 +8,21 @@ import { formatDuration, formatLocal } from '../../util/clock';
 import { renderPairs } from '../../util/table';
 import { detentionBlocks, pilotOnBoardMinutes, waitingMinutes } from '../../domain/movement/times';
 import { assignPilot, boardVessel, completeMovement, getUnderway } from '../../service/dispatch';
+import { bookBoarding, offerBoarding, releaseBoarding } from '../../service/boarding';
+import { describeGround, makeBoat, makeGround } from '../../domain/boat/boarding';
+import {
+  allBoats,
+  allGrounds,
+  saveBoat,
+  saveGround,
+  tripsForMovement,
+} from '../../storage/boarding-store';
+import { renderTable } from '../../util/table';
 import { findTimes, requireMovement, saveTimes } from '../../storage/movement-store';
 import type { DelayCause } from '../../domain/movement/times';
 import type { Io } from '../output';
 import { withDistrict } from '../run';
-import { readTime } from '../shared';
+import { readInteger, readTime } from '../shared';
 
 const CAUSES: readonly DelayCause[] = ['vessel', 'berth', 'tug', 'weather', 'district', 'traffic'];
 
@@ -136,5 +146,173 @@ export function registerDispatch(program: Command, io: Io): void {
           say(`${reference} delayed by ${cause}`, updated);
         },
       ),
+    );
+
+  const launch = program.command('launch').description('the boarding grounds and the boats');
+
+  launch
+    .command('ground <id> <name> <passageMinutes> <swellLimit>')
+    .description('record a boarding ground')
+    .option('--no-night', 'she is not used after dark')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          id: string,
+          name: string,
+          passageMinutes: string,
+          swellLimit: string,
+          local: { night?: boolean },
+        ) => {
+          const ground = makeGround({
+            id,
+            name,
+            passageMinutes: readInteger(passageMinutes, 'passage minutes'),
+            swellLimit: readInteger(swellLimit, 'swell limit'),
+            nightBoarding: local.night !== false,
+          });
+          saveGround(context.db, ground);
+          say(describeGround(ground), ground);
+        },
+      ),
+    );
+
+  launch
+    .command('boat <id> <name> <swellLimit>')
+    .description('record a pilot boat')
+    .option('--berths <count>', 'how many pilots she carries', '2')
+    .option('--laid-up', 'she is not available')
+    .action(
+      withDistrict(
+        program,
+        io,
+        (
+          { context, say },
+          id: string,
+          name: string,
+          swellLimit: string,
+          local: { berths: string; laidUp?: boolean },
+        ) => {
+          const boat = makeBoat({
+            id,
+            name,
+            swellLimit: readInteger(swellLimit, 'swell limit'),
+            berths: readInteger(local.berths, 'berths'),
+            active: local.laidUp !== true,
+          });
+          saveBoat(context.db, boat);
+          say(`${boat.id} ${boat.name}, ${boat.swellLimit} cm limit`, boat);
+        },
+      ),
+    );
+
+  launch
+    .command('list')
+    .description('the grounds and the boats')
+    .action(
+      withDistrict(program, io, ({ context, say }) => {
+        const grounds = allGrounds(context.db);
+        const boats = allBoats(context.db);
+        const text = [
+          renderTable(
+            [
+              { heading: 'ground' },
+              { heading: 'name' },
+              { heading: 'out', align: 'right' },
+              { heading: 'swell limit', align: 'right' },
+              { heading: 'night' },
+            ],
+            grounds.map((ground) => [
+              ground.id,
+              ground.name,
+              `${ground.passageMinutes} min`,
+              `${ground.swellLimit} cm`,
+              ground.nightBoarding ? 'yes' : '',
+            ]),
+            { title: 'boarding grounds', empty: 'no grounds' },
+          ),
+          '',
+          renderTable(
+            [
+              { heading: 'boat' },
+              { heading: 'name' },
+              { heading: 'swell limit', align: 'right' },
+              { heading: 'berths', align: 'right' },
+              { heading: '' },
+            ],
+            boats.map((boat) => [
+              boat.id,
+              boat.name,
+              `${boat.swellLimit} cm`,
+              String(boat.berths),
+              boat.active ? '' : 'laid up',
+            ]),
+            { title: 'pilot boats', empty: 'no boats' },
+          ),
+        ].join('\n');
+        say(text, { grounds, boats });
+      }),
+    );
+
+  launch
+    .command('offer <reference>')
+    .description('what the launch could do for a movement')
+    .option('--ground <id>', 'try this ground only')
+    .option('--boat <id>', 'try this boat only')
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, reference: string, local: { ground?: string; boat?: string }) => {
+          const offer = offerBoarding(context, {
+            movement: reference,
+            ...(local.ground === undefined ? {} : { ground: local.ground }),
+            ...(local.boat === undefined ? {} : { boat: local.boat }),
+          });
+          const offset = context.district.offset;
+          const text =
+            offer.trip === undefined
+              ? `no launch: ${offer.detail}`
+              : `${offer.trip.boat} leaves at ${formatLocal(offer.trip.departs, offset)} ` +
+                `for ${offer.trip.ground}`;
+          say(text, offer);
+        },
+      ),
+    );
+
+  launch
+    .command('book <reference>')
+    .description('book the launch for a movement')
+    .option('--ground <id>', 'use this ground')
+    .option('--boat <id>', 'use this boat')
+    .action(
+      withDistrict(
+        program,
+        io,
+        ({ context, say }, reference: string, local: { ground?: string; boat?: string }) => {
+          const trip = bookBoarding(context, {
+            movement: reference,
+            ...(local.ground === undefined ? {} : { ground: local.ground }),
+            ...(local.boat === undefined ? {} : { boat: local.boat }),
+          });
+          const offset = context.district.offset;
+          say(`${trip.boat} takes ${trip.pilot} out at ${formatLocal(trip.departs, offset)}`, trip);
+        },
+      ),
+    );
+
+  launch
+    .command('release <reference>')
+    .description('give the launch back')
+    .action(
+      withDistrict(program, io, ({ context, say }, reference: string) => {
+        const released = releaseBoarding(context, reference);
+        say(`${released} trips released`, {
+          reference,
+          trips: tripsForMovement(context.db, reference),
+        });
+      }),
     );
 }

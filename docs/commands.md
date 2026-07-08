@@ -219,6 +219,49 @@ record a delay against a movement
 Options:
   - `--note <text>` what happened
 
+### `keelroom launch`
+
+the boarding grounds and the boats
+
+### `keelroom launch ground`
+
+record a boarding ground
+
+Options:
+  - `--no-night` she is not used after dark
+
+### `keelroom launch boat`
+
+record a pilot boat
+
+Options:
+  - `--berths <count>` how many pilots she carries
+  - `--laid-up` she is not available
+
+### `keelroom launch list`
+
+the grounds and the boats
+
+### `keelroom launch offer`
+
+what the launch could do for a movement
+
+Options:
+  - `--ground <id>` try this ground only
+  - `--boat <id>` try this boat only
+
+### `keelroom launch book`
+
+book the launch for a movement
+
+Options:
+  - `--ground <id>` use this ground
+  - `--boat <id>` use this boat
+
+### `keelroom launch release`
+
+give the launch back
+
 ### `keelroom district`
 
 the channel and its charts

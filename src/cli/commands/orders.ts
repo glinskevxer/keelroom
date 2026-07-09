@@ -20,7 +20,7 @@ import {
 } from '../../storage/movement-store';
 import { allVessels } from '../../storage/fleet-store';
 import { amendOrder, cancelOrder, placeOrder, refuseOrder } from '../../service/ordering';
-import { importOrders } from '../../service/imports';
+import { importEtas, importOrders } from '../../service/imports';
 import { hazardClasses, makeDeclaration, describeDeclaration } from '../../domain/vessel/cargo';
 import { findDeclaration, requireMovement, saveDeclaration } from '../../storage/movement-store';
 import { readFileSync } from 'node:fs';
@@ -265,6 +265,20 @@ export function registerOrders(program: Command, io: Io): void {
             ? `${reference} has declared nothing`
             : describeDeclaration(declaration),
           declaration ?? null,
+        );
+      }),
+    );
+
+  orders
+    .command('etas <path>')
+    .description('take revised times from an agent, all or nothing')
+    .action(
+      withDistrict(program, io, ({ context, say }, path: string) => {
+        const summary = importEtas(context, readFileSync(path, 'utf8'), path);
+        say(
+          `${summary.written} movements amended and back on the planning list: ` +
+            summary.replan.join(', '),
+          summary,
         );
       }),
     );

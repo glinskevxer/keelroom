@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { allVessels, findVessel, findAccount } from '../../../src/storage/fleet-store';
 import { loadDistrict } from '../../../src/storage/district-store';
 import { findMovement } from '../../../src/storage/movement-store';
+import { parseInstant } from '../../../src/util/clock';
+import { confirmMovement } from '../../../src/service/planning';
 import {
   importAccounts,
+  importEtas,
   importOrders,
+  readEtas,
   readOrders,
   importHarmonics,
   importSurveys,
@@ -226,5 +230,56 @@ describe('orders', () => {
         'imo,agent,kind,from,to,draught_cm,requested_for\n9074729,SEAWAY,towage,SEA,GRAIN-3,1100,2025-04-03T06:00Z\n',
       ),
     ).toThrow(/expected one of/);
+  });
+});
+
+describe('revised times', () => {
+  const ORDERS = `imo,agent,kind,from,to,draught_cm,requested_for
+9074729,SEAWAY,arrival,SEA,GRAIN-3,1100,2025-04-03T06:00Z
+9074705,SEAWAY,arrival,SEA,GRAIN-3,600,2025-04-05T06:00Z
+`;
+
+  it('read every row', () => {
+    const rows = readEtas(
+      'reference,requested_for,draught_cm\nM-2025-0001,2025-04-04T06:00Z,1050\n',
+    );
+    expect(rows[0]?.reference).toBe('M-2025-0001');
+    expect(rows[0]?.draught).toBe(1050);
+  });
+
+  it('amend the movements they name', () => {
+    harness = testContext();
+    importOrders(harness.context, ORDERS);
+    const summary = importEtas(
+      harness.context,
+      'reference,requested_for\nM-2025-0001,2025-04-04T09:00Z\n',
+    );
+    expect(summary.written).toBe(1);
+    expect(findMovement(harness.temp.db, 'M-2025-0001')?.requestedFor).toBe(
+      parseInstant('2025-04-04T09:00Z'),
+    );
+  });
+
+  it('drop the planned time so she comes back onto the list', () => {
+    harness = testContext();
+    importOrders(harness.context, ORDERS);
+    confirmMovement(harness.context, { reference: 'M-2025-0001' });
+    importEtas(harness.context, 'reference,requested_for\nM-2025-0001,2025-04-04T09:00Z\n');
+    const movement = findMovement(harness.temp.db, 'M-2025-0001')!;
+    expect(movement.plannedFor).toBeUndefined();
+    expect(movement.status).toBe('ordered');
+  });
+
+  it('refuse the whole file for one bad row', () => {
+    harness = testContext();
+    importOrders(harness.context, ORDERS);
+    const before = findMovement(harness.temp.db, 'M-2025-0001')?.requestedFor;
+    expect(() =>
+      importEtas(
+        harness!.context,
+        'reference,requested_for\nM-2025-0001,2025-04-04T09:00Z\nM-2025-9999,2025-04-04T09:00Z\n',
+      ),
+    ).toThrow(/no movement with reference/);
+    expect(findMovement(harness.temp.db, 'M-2025-0001')?.requestedFor).toBe(before);
   });
 });

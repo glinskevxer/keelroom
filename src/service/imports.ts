@@ -25,7 +25,7 @@ import { isKnownConstituent } from '../domain/tide/constituent';
 import { saveAccount, saveVessel } from '../storage/fleet-store';
 import type { MovementKind } from '../domain/movement/movement';
 import type { Context } from './context';
-import { placeOrder } from './ordering';
+import { amendOrder, placeOrder } from './ordering';
 
 export interface ImportSummary {
   readonly read: number;
@@ -263,4 +263,47 @@ export function importOrders(context: Context, text: string, source = 'orders.cs
     ),
   );
   return { read: orders.length, written: references.length, kind: 'order', references };
+}
+
+export interface EtaRow {
+  readonly reference: string;
+  readonly requestedFor: string;
+  readonly draught?: number;
+}
+
+export function readEtas(text: string, source = 'etas.csv'): EtaRow[] {
+  const table = parseCsv(text, { source });
+  return table.rows.map((row) => ({
+    reference: row.get('reference'),
+    requestedFor: row.get('requested_for'),
+    ...(row.optional('draught_cm') === undefined
+      ? {}
+      : { draught: requireInteger(row, 'draught_cm') }),
+  }));
+}
+
+export interface EtaImport extends ImportSummary {
+  /** The movements whose planned time was dropped and want replanning. */
+  readonly replan: readonly string[];
+}
+
+/**
+ * Agents send a revised estimated arrival for a list of ships rather than
+ * telephoning about each one. Every row goes through the same amendment the desk
+ * would make by hand, which means a confirmed movement loses its planned time
+ * and comes back onto the planning list rather than quietly keeping a window it
+ * no longer fits.
+ */
+export function importEtas(context: Context, text: string, source = 'etas.csv'): EtaImport {
+  const rows = readEtas(text, source);
+  const replan = inTransaction(context.db, () =>
+    rows.map((row) => {
+      const amended = amendOrder(context, row.reference, {
+        requestedFor: parseInstant(row.requestedFor),
+        ...(row.draught === undefined ? {} : { draught: row.draught }),
+      });
+      return amended.reference;
+    }),
+  );
+  return { read: rows.length, written: replan.length, kind: 'eta', replan };
 }

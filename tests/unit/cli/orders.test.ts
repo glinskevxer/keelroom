@@ -266,3 +266,27 @@ describe('declaring the cargo', () => {
     expect(plan.io.text()).toContain('RES-DAY-09');
   });
 });
+
+describe('revised times from an agent', () => {
+  it('amend the movements and say which want replanning', async () => {
+    harness = cliHarness();
+    const reference = await place();
+    await harness.invoke('plan', 'confirm', reference);
+    const path = join(harness.directory, 'etas.csv');
+    writeFileSync(path, `reference,requested_for\n${reference},2025-04-04T09:00Z\n`);
+    const result = await harness.invoke('orders', 'etas', path);
+    expect(result.code).toBe(EXIT_CLEAN);
+    expect(result.io.text()).toContain('1 movements amended');
+    const shown = await harness.invoke('orders', 'show', reference);
+    expect(shown.io.text()).toContain('status       ordered');
+    expect(shown.io.text()).toContain('planned      not yet');
+  });
+
+  it('refuse a file naming a movement nobody has', async () => {
+    harness = cliHarness();
+    const path = join(harness.directory, 'etas.csv');
+    writeFileSync(path, 'reference,requested_for\nM-2025-9999,2025-04-04T09:00Z\n');
+    const result = await harness.invoke('orders', 'etas', path);
+    expect(result.io.errorText()).toContain('no movement with reference');
+  });
+});

@@ -483,6 +483,10 @@ Options:
 
 what she declared
 
+### `keelroom orders etas`
+
+take revised times from an agent, all or nothing
+
 ### `keelroom plan`
 
 transit windows

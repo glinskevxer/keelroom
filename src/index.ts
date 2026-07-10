@@ -106,8 +106,73 @@ export { assignPilot, boardVessel, completeMovement } from './service/dispatch';
 export { priceMovement, raiseInvoice } from './service/settlement';
 export { issueInvoice, statementFor, takePayment } from './service/collections';
 
+export type { Notice, NoticeKind } from './domain/notice/notice';
+export { makeNotice, currentNotices, draughtCapFor } from './domain/notice/notice';
+export type { NoticeEffects } from './domain/notice/apply';
+export { noticeEffects } from './domain/notice/apply';
+
+export type { Occupancy, Conflict } from './domain/traffic/occupancy';
+export { conflicts, occupancyOf } from './domain/traffic/occupancy';
+
+export type { Tug, TugBooking } from './domain/tug/tug';
+export { makeTug, allocateTugs, freeTugs } from './domain/tug/tug';
+
+export type { Observation } from './domain/weather/observation';
+export { makeObservation, readingAt, beaufort } from './domain/weather/observation';
+
+export type { BoardingGround, PilotBoat, Trip } from './domain/boat/boarding';
+export { makeGround, makeBoat, planBoarding } from './domain/boat/boarding';
+
+export type { Stay, BerthConflict } from './domain/berth/stay';
+export { staysFrom, berthConflicts } from './domain/berth/stay';
+
+export type { CargoDeclaration, HazardClass } from './domain/vessel/cargo';
+export { makeDeclaration, isDangerous } from './domain/vessel/cargo';
+
+export type { SecondaryPort } from './domain/tide/secondary';
+export { makeSecondary, secondaryExtremes, secondaryHeight } from './domain/tide/secondary';
+
+export type { Deposit, DepositDraw } from './domain/billing/deposit';
+export { makeDeposit, drawDown, heldFor } from './domain/billing/deposit';
+
+export type { Dispute, DisputeGround } from './domain/billing/dispute';
+export { raiseDispute, settle as settleDispute, disputedOn } from './domain/billing/dispute';
+
+export type { Contact, ContactRole } from './domain/billing/contact';
+export { makeContact, noticeList } from './domain/billing/contact';
+
+export type { AuditEntry, AuditAction } from './domain/audit/entry';
+export { makeEntry as makeAuditEntry, auditActions } from './domain/audit/entry';
+
+export type { PeriodSummary, MovementRecord } from './domain/statistics/summary';
+export { summarise as summarisePeriod, punctuality } from './domain/statistics/summary';
+
+export type { DistrictDescription } from './service/setup';
+export { createDistrict, parseDescription } from './service/setup';
+export type { HealthFinding } from './service/health';
+export { checkDistrict } from './service/health';
+export { trafficFor, checkAgainstTraffic } from './service/traffic';
+export { diaryFor, berthsFor } from './service/berths';
+export { offerTugs, bookForMovement as bookTugsFor } from './service/towage';
+export { offerBoarding, bookBoarding } from './service/boarding';
+export { districtReturn } from './service/statistics';
+export { studyDredging } from './service/dredging';
+export { adviseAt, deepestForWindow } from './service/advice';
+export { certificateFor } from './service/certificate';
+export { studyRates, raiseBook } from './service/rates';
+export { note as recordAudit, trailOf } from './service/audit';
+export { buildExport, exportNames } from './service/exports';
+export { importVessels, importOrders, importEtas } from './service/imports';
+
+export { buildRouter } from './api/routes';
+export { buildServer, serve } from './api/server';
+
 export { renderOrders } from './report/orders';
 export { renderTideTable } from './report/tide';
 export { renderPlan } from './report/plan';
 export { renderBoard } from './report/board';
 export { renderInvoice, renderStatement } from './report/money';
+export { renderBulletin } from './report/bulletin';
+export { renderNotices } from './report/notices';
+export { renderReturn } from './report/statistics';
+export { renderCertificate } from './report/plan';

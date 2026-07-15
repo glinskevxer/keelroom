@@ -31,7 +31,9 @@
     "audit": "npm audit --omit=dev --json > audit.json || true && tsx scripts/audit-dependencies.ts --from-audit audit.json",
     "handbook": "tsx scripts/build-handbook.ts",
     "handbook:check": "tsx scripts/build-handbook.ts --check",
-    "readme:check": "tsx scripts/check-readme.ts"
+    "readme:check": "tsx scripts/check-readme.ts",
+    "api-docs": "tsx scripts/build-api-reference.ts",
+    "api-docs:check": "tsx scripts/build-api-reference.ts --check"
   },
   "dependencies": {
     "better-sqlite3": "11.8.1",

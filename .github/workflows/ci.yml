@@ -89,6 +89,7 @@ jobs:
       - run: npm run commands:check
       - run: npm run handbook:check
       - run: npm run readme:check
+      - run: npm run api-docs:check
 
   release:
     name: what git would ship

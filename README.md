@@ -93,5 +93,6 @@ and the wrapper every command action goes through.
 
 - `docs/commands.md` every command, generated from the program
 - `docs/rules.md` every rule id, generated from the source
+- `docs/api.md` every route the read side serves, generated from the router
 - `docs/operations.md` how a district is run day to day
 - `docs/example-district.json` a district description to start from

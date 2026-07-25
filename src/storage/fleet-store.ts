@@ -8,8 +8,8 @@
  * feeding a bad ship into a clearance calculation.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import type { Account } from '../domain/billing/account';
 import { makeAccount } from '../domain/billing/account';
 import type { Contact } from '../domain/billing/contact';
@@ -93,13 +93,7 @@ export function findVessel(db: Db, imo: string): Vessel | undefined {
   return row === undefined ? undefined : toVessel(row);
 }
 
-export function requireVessel(db: Db, imo: string): Vessel {
-  const vessel = findVessel(db, imo);
-  if (vessel === undefined) {
-    throw new NotFoundError('vessel', imo);
-  }
-  return vessel;
-}
+export const requireVessel = requiring(findVessel, 'vessel', (_db, imo) => imo);
 
 export function allVessels(db: Db): Vessel[] {
   const rows = db.prepare('select * from vessel order by name, imo').all() as VesselRow[];
@@ -159,13 +153,7 @@ export function findAccount(db: Db, agent: string): Account | undefined {
   return row === undefined ? undefined : toAccount(row);
 }
 
-export function requireAccount(db: Db, agent: string): Account {
-  const account = findAccount(db, agent);
-  if (account === undefined) {
-    throw new NotFoundError('account', agent);
-  }
-  return account;
-}
+export const requireAccount = requiring(findAccount, 'account', (_db, agent) => agent);
 
 export function allAccounts(db: Db): Account[] {
   const rows = db.prepare('select * from account order by agent').all() as AccountRow[];

@@ -2,9 +2,9 @@
  * The grounds, the launches and the trips.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Interval } from '../util/interval';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import type { BoardingGround, PilotBoat, Trip } from '../domain/boat/boarding';
 import { makeBoat, makeGround } from '../domain/boat/boarding';
 
@@ -65,13 +65,11 @@ export function allGrounds(db: Db): BoardingGround[] {
   );
 }
 
-export function requireGround(db: Db, id: string): BoardingGround {
-  const found = allGrounds(db).find((ground) => ground.id === id);
-  if (found === undefined) {
-    throw new NotFoundError('boarding ground', id);
-  }
-  return found;
-}
+export const requireGround = requiring(
+  (db: Db, id: string) => allGrounds(db).find((ground) => ground.id === id),
+  'boarding ground',
+  (_db, id) => id,
+);
 
 export function saveBoat(db: Db, boat: PilotBoat): void {
   db.prepare(
@@ -97,13 +95,11 @@ export function allBoats(db: Db): PilotBoat[] {
   );
 }
 
-export function requireBoat(db: Db, id: string): PilotBoat {
-  const found = allBoats(db).find((boat) => boat.id === id);
-  if (found === undefined) {
-    throw new NotFoundError('pilot boat', id);
-  }
-  return found;
-}
+export const requireBoat = requiring(
+  (db: Db, id: string) => allBoats(db).find((boat) => boat.id === id),
+  'pilot boat',
+  (_db, id) => id,
+);
 
 function toTrip(row: TripRow): Trip {
   return {

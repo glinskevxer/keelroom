@@ -2,8 +2,8 @@
  * The deposits and the draws against them.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import { inTransaction } from './database';
 import type { Deposit, DepositDraw } from '../domain/billing/deposit';
 import { makeDeposit } from '../domain/billing/deposit';
@@ -63,13 +63,7 @@ export function findDeposit(db: Db, reference: string): Deposit | undefined {
   return row === undefined ? undefined : toDeposit(row);
 }
 
-export function requireDeposit(db: Db, reference: string): Deposit {
-  const deposit = findDeposit(db, reference);
-  if (deposit === undefined) {
-    throw new NotFoundError('deposit', reference);
-  }
-  return deposit;
-}
+export const requireDeposit = requiring(findDeposit, 'deposit', (_db, reference) => reference);
 
 export function drawsFor(db: Db, agent: string): DepositDraw[] {
   const rows = db

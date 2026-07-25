@@ -2,10 +2,10 @@
  * The tug list and the bookings against it.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Interval } from '../util/interval';
 import { makeInterval } from '../util/interval';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import { inTransaction } from './database';
 import type { Tug, TugBooking } from '../domain/tug/tug';
 import { makeTug } from '../domain/tug/tug';
@@ -59,13 +59,7 @@ export function findTug(db: Db, id: string): Tug | undefined {
   return row === undefined ? undefined : toTug(row);
 }
 
-export function requireTug(db: Db, id: string): Tug {
-  const tug = findTug(db, id);
-  if (tug === undefined) {
-    throw new NotFoundError('tug', id);
-  }
-  return tug;
-}
+export const requireTug = requiring(findTug, 'tug', (_db, id) => id);
 
 export function bookingsInPeriod(db: Db, period: Interval): TugBooking[] {
   const rows = db

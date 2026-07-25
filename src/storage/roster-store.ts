@@ -7,11 +7,11 @@
  * takes a ship is how two despatchers end up with different boards.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Minute } from '../util/clock';
 import type { Interval } from '../util/interval';
 import { makeInterval } from '../util/interval';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import { inTransaction } from './database';
 import type { Grade, Pilot } from '../domain/roster/pilot';
 import { makePilot } from '../domain/roster/pilot';
@@ -118,13 +118,7 @@ export function findPilot(db: Db, id: string): Pilot | undefined {
   return row === undefined ? undefined : toPilot(row, endorsementsFor(db, id));
 }
 
-export function requirePilot(db: Db, id: string): Pilot {
-  const pilot = findPilot(db, id);
-  if (pilot === undefined) {
-    throw new NotFoundError('pilot', id);
-  }
-  return pilot;
-}
+export const requirePilot = requiring(findPilot, 'pilot', (_db, id) => id);
 
 export function allPilots(db: Db): Pilot[] {
   const rows = db.prepare('select * from pilot order by seniority').all() as PilotRow[];

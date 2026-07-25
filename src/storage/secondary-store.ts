@@ -2,8 +2,8 @@
  * The secondary ports, which are rows rather than stations.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import type { SecondaryPort } from '../domain/tide/secondary';
 import { makeSecondary } from '../domain/tide/secondary';
 
@@ -68,13 +68,7 @@ export function findSecondary(db: Db, id: string): SecondaryPort | undefined {
   return row === undefined ? undefined : toPort(row);
 }
 
-export function requireSecondary(db: Db, id: string): SecondaryPort {
-  const port = findSecondary(db, id);
-  if (port === undefined) {
-    throw new NotFoundError('secondary port', id);
-  }
-  return port;
-}
+export const requireSecondary = requiring(findSecondary, 'secondary port', (_db, id) => id);
 
 export function secondaryOn(db: Db, standard: string): SecondaryPort[] {
   const rows = db

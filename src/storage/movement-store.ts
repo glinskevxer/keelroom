@@ -7,9 +7,9 @@
  * get duplicated.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Minute } from '../util/clock';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import { inTransaction } from './database';
 import type { Movement, MovementKind, MovementStatus } from '../domain/movement/movement';
 import { makeMovement } from '../domain/movement/movement';
@@ -132,13 +132,7 @@ export function findMovement(db: Db, reference: string): Movement | undefined {
   return toMovement(row, notes);
 }
 
-export function requireMovement(db: Db, reference: string): Movement {
-  const movement = findMovement(db, reference);
-  if (movement === undefined) {
-    throw new NotFoundError('movement', reference);
-  }
-  return movement;
-}
+export const requireMovement = requiring(findMovement, 'movement', (_db, reference) => reference);
 
 function movementsFrom(db: Db, rows: readonly MovementRow[]): Movement[] {
   return rows.map((row) => requireMovement(db, row.reference));

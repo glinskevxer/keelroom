@@ -7,10 +7,10 @@
  * queries filter it out.
  */
 
-import { NotFoundError } from '../util/errors';
 import type { Minute } from '../util/clock';
 import type { Interval } from '../util/interval';
 import type { Db } from './database';
+import { requiring } from './lookup';
 import type { Notice, NoticeKind } from '../domain/notice/notice';
 import { makeNotice, makeNoticeId } from '../domain/notice/notice';
 
@@ -68,13 +68,7 @@ export function findNotice(db: Db, id: string): Notice | undefined {
   return row === undefined ? undefined : toNotice(row);
 }
 
-export function requireNotice(db: Db, id: string): Notice {
-  const notice = findNotice(db, id);
-  if (notice === undefined) {
-    throw new NotFoundError('notice', id);
-  }
-  return notice;
-}
+export const requireNotice = requiring(findNotice, 'notice', (_db, id) => id);
 
 /** Every notice that has not been withdrawn, whatever its dates. */
 export function standingNotices(db: Db): Notice[] {

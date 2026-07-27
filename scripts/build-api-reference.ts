@@ -24,12 +24,12 @@ const NOTES: Record<string, string> = {
   '/': 'what this is and everything it serves',
   '/district': 'the reaches with both depths, and the berths',
   '/tides/:station': 'the height now and the turns of the tide, `days` ahead',
-  '/vessels': 'every ship on the books with her pilotage units',
+  '/vessels': 'every ship on the books with her units, paged by `limit` and `offset`',
   '/vessels/:imo': 'one ship in full',
-  '/movements': 'what is expected, `days` ahead, with a count by state',
+  '/movements': 'what is expected, `days` ahead, counted by state and paged',
   '/movements/:reference': 'one movement and the times off the card',
   '/movements/:reference/plan': 'the windows for it, `hours` either side',
-  '/agents/:agent/movements': 'everything that agent has ordered',
+  '/agents/:agent/movements': 'everything that agent has ordered, paged',
   '/agents/:agent/statement': 'what they owe, aged, and what is under dispute',
   '/board': 'the turn board in order',
   '/notices': 'what is in force and what is standing',
@@ -58,6 +58,9 @@ function render(): string {
   lines.push('The api is read only. Everything answers json, nothing is cached, and a handler');
   lines.push('that refuses answers 400 for a bad request, 404 for something that is not there,');
   lines.push('405 for the wrong method and 500 for anything else.');
+  lines.push('');
+  lines.push('A paged route answers `{ items, total, limit, offset, next }`. Ask for the next');
+  lines.push('page with the `next` it gave you; when there is no `next` there is no more.');
   lines.push('');
   lines.push('| method | path | what it answers |');
   lines.push('| --- | --- | --- |');

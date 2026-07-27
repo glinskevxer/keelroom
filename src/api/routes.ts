@@ -27,7 +27,7 @@ import {
 import { planMovement } from '../service/planning';
 import { statementFor } from '../service/collections';
 import type { Context } from '../service/context';
-import { Router, queryInteger } from './router';
+import { Router, paginate, queryInteger, readPage } from './router';
 import { standingNotices, noticesOn } from '../storage/notice-store';
 import { currentNotices } from '../domain/notice/notice';
 import { trafficDay } from '../service/traffic';
@@ -93,14 +93,17 @@ export function buildRouter(context: Context): Router {
     };
   });
 
-  router.get('/vessels', () => ({
+  router.get('/vessels', (request) => ({
     status: 200,
-    body: allVessels(context.db).map((vessel) => ({
-      imo: vessel.imo,
-      name: vessel.name,
-      type: vessel.type,
-      units: pilotageUnits(vessel),
-    })),
+    body: paginate(
+      allVessels(context.db).map((vessel) => ({
+        imo: vessel.imo,
+        name: vessel.name,
+        type: vessel.type,
+        units: pilotageUnits(vessel),
+      })),
+      readPage(request),
+    ),
   }));
 
   router.get('/vessels/:imo', (request) => {
@@ -115,7 +118,10 @@ export function buildRouter(context: Context): Router {
     const days = queryInteger(request, 'days', 2);
     const from = context.now();
     const movements = movementsInWindow(context.db, from, from + days * MINUTES_PER_DAY);
-    return { status: 200, body: { counts: countByState(movements), movements } };
+    return {
+      status: 200,
+      body: { counts: countByState(movements), ...paginate(movements, readPage(request)) },
+    };
   });
 
   router.get('/movements/:reference', (request) => {
@@ -149,7 +155,10 @@ export function buildRouter(context: Context): Router {
 
   router.get('/agents/:agent/movements', (request) => {
     const agent = request.params.agent ?? '';
-    return { status: 200, body: movementsForAgent(context.db, agent) };
+    return {
+      status: 200,
+      body: paginate(movementsForAgent(context.db, agent), readPage(request)),
+    };
   });
 
   router.get('/agents/:agent/statement', (request) => {

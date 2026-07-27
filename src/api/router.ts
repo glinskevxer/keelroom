@@ -125,3 +125,49 @@ export function queryInteger(request: Request, name: string, fallback: number): 
   }
   return Number(value);
 }
+
+export interface Page {
+  readonly limit: number;
+  readonly offset: number;
+}
+
+const DEFAULT_LIMIT = 50;
+const MOST = 500;
+
+/**
+ * The page a request asked for. An agent with four hundred calls a year should
+ * not have to take them all in one response, and the district should not have to
+ * build them all to answer.
+ */
+export function readPage(request: Request, fallback = DEFAULT_LIMIT): Page {
+  const limit = queryInteger(request, 'limit', fallback);
+  const offset = queryInteger(request, 'offset', 0);
+  if (limit <= 0 || limit > MOST) {
+    throw new Error(`limit must be between 1 and ${MOST}`);
+  }
+  if (offset < 0) {
+    throw new Error('offset cannot be negative');
+  }
+  return { limit, offset };
+}
+
+export interface Paged<T> {
+  readonly items: readonly T[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  /** The offset to ask for next, when there is one. */
+  readonly next: number | undefined;
+}
+
+export function paginate<T>(items: readonly T[], page: Page): Paged<T> {
+  const slice = items.slice(page.offset, page.offset + page.limit);
+  const consumed = page.offset + slice.length;
+  return {
+    items: slice,
+    total: items.length,
+    limit: page.limit,
+    offset: page.offset,
+    next: consumed < items.length ? consumed : undefined,
+  };
+}

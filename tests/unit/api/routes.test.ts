@@ -107,7 +107,7 @@ describe('the routes', () => {
 
   it('vessels list and show', () => {
     harness = testContext();
-    expect(call('/vessels').body).toHaveLength(3);
+    expect((call('/vessels').body as { items: unknown[] }).items).toHaveLength(3);
     const body = call('/vessels/9074729').body as { units: number };
     expect(body.units).toBeGreaterThan(0);
     expect(call('/vessels/9123453').status).toBe(404);
@@ -118,10 +118,10 @@ describe('the routes', () => {
     order();
     const body = call('/movements', { days: '5' }).body as {
       counts: { ordered: number };
-      movements: unknown[];
+      items: unknown[];
     };
     expect(body.counts.ordered).toBe(1);
-    expect(body.movements).toHaveLength(1);
+    expect(body.items).toHaveLength(1);
   });
 
   it('one movement with its card', () => {
@@ -147,7 +147,7 @@ describe('the routes', () => {
   it('an agent movements and statement', () => {
     harness = testContext();
     order();
-    expect(call('/agents/SEAWAY/movements').body).toHaveLength(1);
+    expect((call('/agents/SEAWAY/movements').body as { items: unknown[] }).items).toHaveLength(1);
     const statement = call('/agents/SEAWAY/statement').body as { balance: number };
     expect(statement.balance).toBe(0);
   });
@@ -216,5 +216,39 @@ describe('the rest of the read side', () => {
     for (const path of ['/notices', '/traffic', '/berths', '/weather', '/tugs', '/return']) {
       expect(body.routes.some((route) => route.path === path)).toBe(true);
     }
+  });
+});
+
+describe('paging', () => {
+  it('takes a limit and an offset', () => {
+    harness = testContext();
+    const first = call('/vessels', { limit: '2' }).body as {
+      items: unknown[];
+      total: number;
+      next: number;
+    };
+    expect(first.items).toHaveLength(2);
+    expect(first.total).toBe(3);
+    expect(first.next).toBe(2);
+    const second = call('/vessels', { limit: '2', offset: '2' }).body as {
+      items: unknown[];
+      next: number | null;
+    };
+    expect(second.items).toHaveLength(1);
+    expect(second.next ?? null).toBeNull();
+  });
+
+  it('refuses a limit that is not a page', () => {
+    harness = testContext();
+    expect(call('/vessels', { limit: '0' }).status).toBe(500);
+    expect(call('/vessels', { limit: '5000' }).status).toBe(500);
+    expect(call('/vessels', { offset: '-1' }).status).toBe(500);
+  });
+
+  it('gives an empty page past the end', () => {
+    harness = testContext();
+    const body = call('/vessels', { offset: '99' }).body as { items: unknown[]; total: number };
+    expect(body.items).toEqual([]);
+    expect(body.total).toBe(3);
   });
 });

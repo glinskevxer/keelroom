@@ -6,17 +6,20 @@ The api is read only. Everything answers json, nothing is cached, and a handler
 that refuses answers 400 for a bad request, 404 for something that is not there,
 405 for the wrong method and 500 for anything else.
 
+A paged route answers `{ items, total, limit, offset, next }`. Ask for the next
+page with the `next` it gave you; when there is no `next` there is no more.
+
 | method | path | what it answers |
 | --- | --- | --- |
 | GET | `/` | what this is and everything it serves |
 | GET | `/district` | the reaches with both depths, and the berths |
 | GET | `/tides/:station` | the height now and the turns of the tide, `days` ahead |
-| GET | `/vessels` | every ship on the books with her pilotage units |
+| GET | `/vessels` | every ship on the books with her units, paged by `limit` and `offset` |
 | GET | `/vessels/:imo` | one ship in full |
-| GET | `/movements` | what is expected, `days` ahead, with a count by state |
+| GET | `/movements` | what is expected, `days` ahead, counted by state and paged |
 | GET | `/movements/:reference` | one movement and the times off the card |
 | GET | `/movements/:reference/plan` | the windows for it, `hours` either side |
-| GET | `/agents/:agent/movements` | everything that agent has ordered |
+| GET | `/agents/:agent/movements` | everything that agent has ordered, paged |
 | GET | `/agents/:agent/statement` | what they owe, aged, and what is under dispute |
 | GET | `/board` | the turn board in order |
 | GET | `/notices` | what is in force and what is standing |

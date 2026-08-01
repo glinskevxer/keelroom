@@ -18,6 +18,7 @@ import { registerConfig } from './commands/config';
 import { registerDispatch } from './commands/dispatch';
 import { registerDistrict } from './commands/district';
 import { registerDoctor } from './commands/doctor';
+import { registerExplain } from './commands/explain';
 import { registerFleet } from './commands/fleet';
 import { registerInit } from './commands/init';
 import { registerNotices } from './commands/notices';
@@ -84,6 +85,7 @@ export function buildProgram(io: Io): Command {
   registerDispatch(program, io);
   registerDistrict(program, io);
   registerDoctor(program, io);
+  registerExplain(program, io);
   registerFleet(program, io);
   registerInit(program, io);
   registerNotices(program, io);

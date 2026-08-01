@@ -334,6 +334,10 @@ Options:
   - `--deep` replan the confirmed movements as well, which is slower
   - `--days <days>` how far ahead to look
 
+### `keelroom explain`
+
+what a rule id means, or every rule in a family
+
 ### `keelroom vessels`
 
 the ships the district knows

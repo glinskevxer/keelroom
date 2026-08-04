@@ -14,11 +14,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text-summary'],
       include: ['src/**/*.ts'],
+      // the suite already clears these; the point of the floor is that a change
+      // which quietly stops covering a module fails rather than drifting
       thresholds: {
-        statements: 85,
-        branches: 80,
-        functions: 85,
-        lines: 85,
+        statements: 95,
+        branches: 90,
+        functions: 95,
+        lines: 95,
       },
     },
   },

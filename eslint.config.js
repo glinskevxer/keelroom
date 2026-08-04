@@ -25,6 +25,17 @@ module.exports = tseslint.config(
       ],
       'no-console': ['error', { allow: ['log', 'error'] }],
       eqeqeq: ['error', 'always'],
+      // a promise nobody waits on is how a command exits before it has written
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      // an async function with nothing to await is a signature that lies
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      // a class field nobody reassigns says so
+      '@typescript-eslint/prefer-readonly': 'error',
+      'no-param-reassign': 'error',
+      'prefer-const': 'error',
+      'no-else-return': 'error',
     },
   },
 );

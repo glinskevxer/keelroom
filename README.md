@@ -96,4 +96,5 @@ and the wrapper every command action goes through.
 - `docs/api.md` every route the read side serves, generated from the router
 - `docs/operations.md` how a district is run day to day
 - `docs/decisions.md` why it is built the way it is
+- `CHANGELOG.md` what changed in each version
 - `docs/example-district.json` a district description to start from

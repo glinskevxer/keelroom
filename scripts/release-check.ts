@@ -40,6 +40,41 @@ function sourceFiles(dir: string, found: string[] = []): string[] {
   return found;
 }
 
+/**
+ * The version being built has to be the top entry in the changelog, and it has
+ * to say something. A release nobody wrote a line about is a release nobody can
+ * tell from the one before it.
+ */
+export function changelogProblems(version: string): string[] {
+  const path = join(root, 'CHANGELOG.md');
+  if (!existsSync(path)) {
+    return ['CHANGELOG.md is missing'];
+  }
+  const text = readFileSync(path, 'utf8');
+  const headings = [...text.matchAll(/^## (\d+\.\d+\.\d+) — (\d{4}-\d{2}-\d{2})$/gm)];
+  if (headings.length === 0) {
+    return ['the changelog has no version headings'];
+  }
+  const problems: string[] = [];
+  const top = headings[0];
+  if (top?.[1] !== version) {
+    problems.push(
+      `the changelog's top entry is ${top?.[1] ?? 'nothing'} and the package is ${version}`,
+    );
+  }
+  const versions = headings.map((heading) => heading[1] ?? '');
+  if (new Set(versions).size !== versions.length) {
+    problems.push('the changelog carries a version twice');
+  }
+  const body = text.slice(text.indexOf(top?.[0] ?? '') + (top?.[0]?.length ?? 0));
+  const next = body.indexOf('\n## ');
+  const entry = next < 0 ? body : body.slice(0, next);
+  if (entry.trim().length < 80) {
+    problems.push(`the changelog entry for ${version} says almost nothing`);
+  }
+  return problems;
+}
+
 function main(): void {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as Manifest;
   const problems: string[] = [];
@@ -84,11 +119,20 @@ function main(): void {
     }
   }
 
-  for (const path of ['README.md', 'docs/commands.md', 'src/version.ts']) {
+  for (const path of [
+    'README.md',
+    'CHANGELOG.md',
+    'docs/commands.md',
+    'docs/rules.md',
+    'docs/api.md',
+    'src/version.ts',
+  ]) {
     if (!existsSync(join(root, path))) {
       problems.push(`${path} is missing`);
     }
   }
+
+  problems.push(...changelogProblems(manifest.version));
 
   if (problems.length > 0) {
     for (const problem of problems) {

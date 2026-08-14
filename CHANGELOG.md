@@ -3,6 +3,19 @@
 The versions this district has run, and what changed in them. Dates are the day
 the version was cut.
 
+## 1.0.0 — 2026-08-12
+
+The district has run a full season on it, so the shape is settled and the
+version says so. Nothing in the interface changed from 0.1.0; what changed is
+that it has been used.
+
+- The command line, the read side and the file format are stable. A district
+  file written by 0.1.0 opens without a migration.
+- The rule ids are stable, which matters because the pilots and the agents quote
+  them: an id will not be reused for a different rule.
+- The tariff order, the clearance policy and the board rules are the ones
+  published in the district's standing orders.
+
 ## 0.1.0 — 2026-08-04
 
 The first version that runs a district end to end.

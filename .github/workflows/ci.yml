@@ -112,6 +112,8 @@ jobs:
         run: npm run build
       - name: the built cli runs
         run: node dist/cli/main.js --version
+      - name: the release notes are there
+        run: npm run release-notes
 
   advisories:
     name: dependency advisories

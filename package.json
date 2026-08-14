@@ -1,6 +1,6 @@
 {
   "name": "keelroom",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Pilotage dispatch, transit planning and settlement for a compulsory pilotage district",
   "license": "UNLICENSED",
@@ -33,7 +33,8 @@
     "handbook:check": "tsx scripts/build-handbook.ts --check",
     "readme:check": "tsx scripts/check-readme.ts",
     "api-docs": "tsx scripts/build-api-reference.ts",
-    "api-docs:check": "tsx scripts/build-api-reference.ts --check"
+    "api-docs:check": "tsx scripts/build-api-reference.ts --check",
+    "release-notes": "tsx scripts/release-notes.ts"
   },
   "dependencies": {
     "better-sqlite3": "11.8.1",

@@ -8,9 +8,9 @@
  * is what the operator means by loading a chart update.
  */
 
-import { NotFoundError } from '../util/errors';
+import { InputError, NotFoundError } from '../util/errors';
 import type { Db } from './database';
-import { inTransaction } from './database';
+import { inTransaction, tableExists } from './database';
 import type { District } from '../domain/chart/district';
 import { makeDistrict } from '../domain/chart/district';
 import type { Position } from '../domain/window/daylight';
@@ -162,6 +162,13 @@ export function saveDistrict(db: Db, stored: StoredDistrict): void {
 }
 
 export function loadDistrict(db: Db, code: string): StoredDistrict {
+  // a file that was never built at all gives sqlite's own error otherwise, which
+  // reads as a bug rather than as "you have not run init yet"
+  if (!tableExists(db, 'district')) {
+    throw new InputError(
+      'the district file has not been built; run keelroom init with a description',
+    );
+  }
   const row = db.prepare('select * from district where code = ?').get(code) as
     | DistrictRow
     | undefined;

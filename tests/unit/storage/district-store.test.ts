@@ -101,3 +101,15 @@ describe('looking for a district', () => {
     expect(() => loadDistrict(one.db, 'NONE')).toThrow(NotFoundError);
   });
 });
+
+describe('a file that was never built', () => {
+  it('says so rather than handing back a sqlite error', () => {
+    temp = temporaryDatabase();
+    expect(() => loadDistrict(temp!.db, 'KLR')).toThrow(/has not been built/);
+  });
+
+  it('still refuses a district code the built file does not carry', () => {
+    const one = ready();
+    expect(() => loadDistrict(one.db, 'NONE')).toThrow(NotFoundError);
+  });
+});

@@ -68,7 +68,11 @@ export function findSecondary(db: Db, id: string): SecondaryPort | undefined {
   return row === undefined ? undefined : toPort(row);
 }
 
-export const requireSecondary = requiring(findSecondary, 'secondary port', (_db, id) => id);
+export const requireSecondary: (db: Db, id: string) => SecondaryPort = requiring(
+  findSecondary,
+  'secondary port',
+  (_db, id) => id,
+);
 
 export function secondaryOn(db: Db, standard: string): SecondaryPort[] {
   const rows = db

@@ -65,7 +65,7 @@ export function allGrounds(db: Db): BoardingGround[] {
   );
 }
 
-export const requireGround = requiring(
+export const requireGround: (db: Db, id: string) => BoardingGround = requiring(
   (db: Db, id: string) => allGrounds(db).find((ground) => ground.id === id),
   'boarding ground',
   (_db, id) => id,
@@ -95,7 +95,7 @@ export function allBoats(db: Db): PilotBoat[] {
   );
 }
 
-export const requireBoat = requiring(
+export const requireBoat: (db: Db, id: string) => PilotBoat = requiring(
   (db: Db, id: string) => allBoats(db).find((boat) => boat.id === id),
   'pilot boat',
   (_db, id) => id,

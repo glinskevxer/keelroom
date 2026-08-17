@@ -132,7 +132,11 @@ export function findMovement(db: Db, reference: string): Movement | undefined {
   return toMovement(row, notes);
 }
 
-export const requireMovement = requiring(findMovement, 'movement', (_db, reference) => reference);
+export const requireMovement: (db: Db, reference: string) => Movement = requiring(
+  findMovement,
+  'movement',
+  (_db, reference) => reference,
+);
 
 function movementsFrom(db: Db, rows: readonly MovementRow[]): Movement[] {
   return rows.map((row) => requireMovement(db, row.reference));

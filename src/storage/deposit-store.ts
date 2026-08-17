@@ -63,7 +63,11 @@ export function findDeposit(db: Db, reference: string): Deposit | undefined {
   return row === undefined ? undefined : toDeposit(row);
 }
 
-export const requireDeposit = requiring(findDeposit, 'deposit', (_db, reference) => reference);
+export const requireDeposit: (db: Db, reference: string) => Deposit = requiring(
+  findDeposit,
+  'deposit',
+  (_db, reference) => reference,
+);
 
 export function drawsFor(db: Db, agent: string): DepositDraw[] {
   const rows = db

@@ -118,7 +118,11 @@ export function findPilot(db: Db, id: string): Pilot | undefined {
   return row === undefined ? undefined : toPilot(row, endorsementsFor(db, id));
 }
 
-export const requirePilot = requiring(findPilot, 'pilot', (_db, id) => id);
+export const requirePilot: (db: Db, id: string) => Pilot = requiring(
+  findPilot,
+  'pilot',
+  (_db, id) => id,
+);
 
 export function allPilots(db: Db): Pilot[] {
   const rows = db.prepare('select * from pilot order by seniority').all() as PilotRow[];

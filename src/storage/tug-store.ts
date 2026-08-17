@@ -59,7 +59,7 @@ export function findTug(db: Db, id: string): Tug | undefined {
   return row === undefined ? undefined : toTug(row);
 }
 
-export const requireTug = requiring(findTug, 'tug', (_db, id) => id);
+export const requireTug: (db: Db, id: string) => Tug = requiring(findTug, 'tug', (_db, id) => id);
 
 export function bookingsInPeriod(db: Db, period: Interval): TugBooking[] {
   const rows = db

@@ -68,7 +68,11 @@ export function findNotice(db: Db, id: string): Notice | undefined {
   return row === undefined ? undefined : toNotice(row);
 }
 
-export const requireNotice = requiring(findNotice, 'notice', (_db, id) => id);
+export const requireNotice: (db: Db, id: string) => Notice = requiring(
+  findNotice,
+  'notice',
+  (_db, id) => id,
+);
 
 /** Every notice that has not been withdrawn, whatever its dates. */
 export function standingNotices(db: Db): Notice[] {
